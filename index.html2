@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interrupted Time Series Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { margin: 0; padding: 20px; background: #fff; font-family: 'Oswald', Arial, sans-serif; color: #000; font-weight: 500; }
+        .page-container { width: 100%; max-width: 1200px; margin: 0 auto; }
+        .page-header { background: #004080; color: #fff; padding: 25px 30px; text-align: center; margin-bottom: 15px; border-radius: 8px 8px 0 0; }
+        .logo-row { display: flex; justify-content: center; margin-bottom: 15px; }
+        .logo-box { background: #fff; border-radius: 8px; padding: 10px; display: flex; align-items: center; }
+        .logo-box img { width: 100px; height: auto; border-radius: 6px; }
+        .page-header h3 { margin: 12px 0 5px; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+        .page-header .tagline { font-size: 10px; font-weight: 500; }
+        .page-header h1 { margin: 20px 0 10px; font-size: 24px; font-weight: 700; letter-spacing: 1px; }
+        .page-header .subtitle { font-size: 14px; font-weight: 500; }
+        .content-card { border: 4px double #004080; border-radius: 12px; padding: 12px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .content-inner { padding: 25px; }
+        .section-header { background: #004080; color: #fff; padding: 15px 20px; margin-bottom: 20px; border-radius: 6px; display: flex; align-items: center; gap: 15px; }
+        .section-icon { background: #fff; color: #004080; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; }
+        .section-title { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+        .upload-section { background: #f8f9fa; padding: 2rem; border-radius: 8px; border: 2px dashed #004080; text-align: center; margin: 1rem 0; transition: all 0.3s; }
+        .upload-section:hover { border-color: #0056b3; background: #e7f3ff; }
+        .upload-section.loaded { background: #d4edda; border-color: #28a745; border-style: solid; }
+        .upload-section h3 { color: #004080; margin-bottom: 1rem; font-size: 18px; font-weight: 700; }
+        .upload-section p { color: #000; font-weight: 500; font-size: 14px; }
+        .file-input-wrapper { position: relative; display: inline-block; cursor: pointer; background: #004080; color: #fff; padding: 14px 24px; border-radius: 6px; border: 2px solid #004080; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Oswald', sans-serif; margin-top: 1rem; transition: all 0.3s; }
+        .file-input-wrapper:hover { background: #0056b3; }
+        .file-input-wrapper input[type="file"] { position: absolute; left: -9999px; }
+        .file-status { margin-top: 15px; font-weight: 700; }
+        .file-status.loaded { color: #28a745; }
+        .file-status.error { color: #dc3545; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin: 1.5rem 0; }
+        .stats-card { background: #f8f9fa; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; border: 2px solid #004080; transition: all 0.2s; }
+        .stats-card:hover { transform: translateY(-3px); }
+        .stats-card h4 { color: #666; font-size: 11px; margin-bottom: 0.5rem; text-transform: uppercase; }
+        .stats-card .metric-value { font-size: 1.4rem; color: #004080; margin-bottom: 0.25rem; font-weight: 700; }
+        .stats-card .metric-value.success { color: #28a745; }
+        .stats-card .metric-value.warning { color: #ffc107; }
+        .stats-card .metric-value.danger { color: #dc3545; }
+        .stats-card p { color: #666; font-size: 11px; }
+        .btn { padding: 12px 22px; border: 2px solid #004080; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Oswald', sans-serif; transition: all 0.2s; margin: 4px; }
+        .btn-primary { background: #004080; color: #fff; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #fff; color: #004080; }
+        .btn-secondary:hover { background: #004080; color: #fff; }
+        .btn-gold { background: #ffc107; color: #000; border-color: #ffc107; }
+        .btn-gold:hover { background: #e0a800; border-color: #e0a800; }
+        .btn-success { background: #28a745; color: #fff; border-color: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .btn-danger { background: #dc3545; color: #fff; border-color: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-sm { padding: 7px 14px; font-size: 12px; }
+        .alert { padding: 1rem; border-radius: 6px; margin: 1rem 0; font-weight: 500; }
+        .alert-success { background: #d4edda; border: 2px solid #28a745; color: #155724; }
+        .alert-warning { background: #fff3cd; border: 2px solid #ffc107; color: #856404; }
+        .alert-error { background: #f8d7da; border: 2px solid #dc3545; color: #721c24; }
+        .alert-info { background: #e7f3ff; border: 2px solid #004080; color: #004080; }
+        .hidden { display: none !important; }
+        .config-card { background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border: 2px solid #004080; margin: 1rem 0; }
+        .config-card h4 { color: #004080; margin-bottom: 1rem; font-size: 16px; font-weight: 700; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1rem; }
+        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; color: #004080; font-size: 12px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
+        .form-input, .form-select { width: 100%; padding: 11px; border: 2px solid #004080; border-radius: 6px; font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 500; background: #fff; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #0056b3; box-shadow: 0 0 0 3px rgba(0,64,128,0.1); }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
+        .feature-card { background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border: 2px solid #004080; }
+        .feature-card h4 { color: #004080; margin-bottom: 1rem; font-size: 15px; font-weight: 700; text-transform: uppercase; }
+        .feature-card ul { line-height: 1.8; padding-left: 1.5rem; }
+        .feature-card li { margin-bottom: 0.5rem; font-size: 13px; }
+        .feature-card strong { color: #004080; }
+        .feature-card p { font-size: 13px; line-height: 1.7; }
+        .formula-box { background: linear-gradient(135deg,#f0f4f8,#e2e8f0); border: 2px solid #004080; border-radius: 8px; padding: 20px; margin-bottom: 15px; text-align: center; }
+        .formula-box h4 { color: #004080; font-size: 15px; margin-bottom: 12px; text-transform: uppercase; }
+        .formula { font-family: 'Times New Roman', serif; font-size: 20px; color: #000; padding: 16px 22px; background: #fff; border-radius: 6px; border: 1px solid #004080; display: inline-block; margin: 8px 0; font-style: italic; }
+        .formula-note { font-size: 13px; color: #555; margin-top: 10px; font-style: italic; line-height: 1.7; }
+        .parameters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 15px 0; }
+        .parameter-card { background: #fff; border: 2px solid #004080; border-radius: 8px; padding: 14px; transition: all 0.2s; }
+        .parameter-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,64,128,0.15); }
+        .param-symbol { font-family: 'Times New Roman', serif; font-size: 20px; color: #004080; font-weight: bold; font-style: italic; margin-bottom: 4px; }
+        .param-name { font-size: 13px; font-weight: 700; color: #004080; margin-bottom: 6px; text-transform: uppercase; }
+        .param-desc { font-size: 12px; color: #333; line-height: 1.6; }
+        .result-box { background: #f8f9fa; border: 2px solid #004080; border-radius: 8px; padding: 20px; margin: 15px 0; }
+        .result-title { color: #004080; font-size: 17px; font-weight: 700; margin-bottom: 15px; border-bottom: 2px solid #004080; padding-bottom: 10px; }
+        .interpretation { background: #d4edda; border: 2px solid #28a745; border-radius: 6px; padding: 15px; margin-top: 15px; }
+        .interpretation.warn { background: #fff3cd; border-color: #ffc107; }
+        .interpretation h4 { margin-bottom: 10px; font-size: 15px; color: #004080; }
+        .chart-container { border: 2px solid #004080; border-radius: 8px; margin-top: 10px; background: #fff; min-height: 420px; }
+        .button-row { margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd; }
+        .pub-table-container { margin: 15px 0; padding: 18px; background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow-x: auto; }
+        .pub-table-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; font-style: italic; color: #333; }
+        .pub-table-note { font-size: 11px; color: #666; margin-top: 10px; font-style: italic; line-height: 1.6; }
+        .pub-table { width: 100%; border-collapse: collapse; font-family: 'Times New Roman', serif; font-size: 13px; }
+        .pub-table th, .pub-table td { padding: 9px 13px; text-align: center; }
+        .pub-table thead { border-top: 2px solid #000; border-bottom: 1px solid #000; }
+        .pub-table thead th { font-weight: bold; background: transparent; color: #000; }
+        .pub-table tbody { border-bottom: 2px solid #000; }
+        .pub-table tbody td { border: none; }
+        .pub-table .row-label { text-align: left; }
+        .pub-table .sig-row { background: #f0f7f0; }
+        .pub-table .int-section { background: #e7f3ff; font-style: italic; }
+        .coef-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; }
+        .coef-pos { background: #d4edda; color: #155724; }
+        .coef-neg { background: #f8d7da; color: #721c24; }
+        .coef-neutral { background: #e7f3ff; color: #004080; }
+        .warning-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 6px; padding: 12px; margin-top: 10px; font-size: 13px; }
+        .data-preview { max-height: 280px; overflow: auto; border: 2px solid #004080; border-radius: 6px; margin: 1rem 0; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .data-table th { background: #004080; color: #fff; padding: 9px; text-align: center; font-weight: 700; position: sticky; top: 0; font-size: 12px; }
+        .data-table td { padding: 7px 10px; border: 1px solid #ddd; text-align: center; }
+        .data-table tr:nth-child(even) { background: #f8f9fa; }
+        .data-table .int-row { background: #fff3cd !important; font-weight: 700; }
+        .chart-tab-bar { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+        .chart-tab { padding: 8px 16px; border: 2px solid #004080; border-radius: 6px 6px 0 0; cursor: pointer; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 12px; background: #f8f9fa; color: #004080; }
+        .chart-tab.active { background: #004080; color: #fff; }
+        .int-manager { background: #fff; border: 2px solid #004080; border-radius: 8px; margin: 1rem 0; overflow: hidden; }
+        .int-manager-header { background: #004080; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; }
+        .int-list { padding: 12px; }
+        .int-item { display: grid; grid-template-columns: 1fr 160px 1fr 36px; gap: 10px; align-items: center; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; background: #f8f9fa; transition: all 0.2s; }
+        .int-item:hover { border-color: #004080; }
+        .int-item input, .int-item select { padding: 8px 10px; border: 2px solid #004080; border-radius: 5px; font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 500; width: 100%; }
+        .int-item .int-color { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+        .int-delete { background: #dc3545; color: #fff; border: none; border-radius: 5px; width: 32px; height: 32px; cursor: pointer; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+        .int-delete:hover { background: #c82333; }
+        .int-empty { text-align: center; color: #666; font-size: 13px; padding: 20px; font-style: italic; }
+        .int-color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
+        .page-footer { background: #004080; color: #fff; padding: 20px 30px; text-align: center; font-size: 13px; line-height: 1.7; font-weight: 500; border-radius: 0 0 8px 8px; }
+        .page-footer p { margin: 6px 0 0; font-size: 12px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f8f9fa; }
+        ::-webkit-scrollbar-thumb { background: #004080; border-radius: 4px; }
+        .math-section { border: 2px solid #004080; border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+        .math-section-title { background: #004080; color: #fff; padding: 13px 18px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px; }
+        .math-section > p { padding: 0 18px; }
+        .math-section > .math-note { margin: 0 18px 16px; }
+        .math-table-wrap { padding: 0 18px 16px; overflow-x: auto; }
+        .math-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .math-table th { background: #004080; color: #fff; padding: 9px 12px; text-align: center; font-weight: 700; font-size: 12px; }
+        .math-table td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; text-align: center; line-height: 1.5; }
+        .math-table tr:last-child td { border-bottom: none; }
+        .math-table .pre-row td { background: #e7f3ff; }
+        .math-table .post-row td { background: #fff3e0; }
+        .math-table .math-total-row td { background: #004080; color: #fff; font-weight: 700; }
+        .math-formula-box { background: linear-gradient(135deg,#f0f4f8,#e2e8f0); border: 2px solid #004080; border-radius: 8px; padding: 18px; margin: 0 18px 6px; text-align: center; }
+        .math-formula { font-family: 'Times New Roman', serif; font-size: 22px; font-style: italic; color: #000; padding: 12px 20px; background: #fff; border-radius: 6px; display: inline-block; border: 1px solid #004080; }
+        .math-formula-label { font-size: 12px; color: #555; margin-top: 10px; font-style: italic; }
+        .math-calc-box { background: #1a1a2e; color: #e0e0ff; font-family: 'Courier New', monospace; font-size: 15px; padding: 16px 22px; border-radius: 8px; margin: 0 18px; line-height: 2; }
+        .math-result-label { background: #d4edda; border-left: 4px solid #28a745; padding: 12px 16px; margin: 14px 18px 0; border-radius: 0 6px 6px 0; font-size: 13px; line-height: 1.7; color: #155724; }
+        .math-note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; border-radius: 0 6px 6px 0; font-size: 13px; line-height: 1.7; color: #333; }
+        .math-summary { border: 3px solid #004080; border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+        .math-summary-title { background: #004080; color: #fff; padding: 15px 20px; font-size: 16px; font-weight: 700; }
+        .math-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0; }
+        .math-summary-card { padding: 18px 20px; border: 1px solid #e2e8f0; background: #fff; }
+        .math-summary-card.highlight-card { background: #e7f3ff; }
+        .msc-symbol { font-family: 'Times New Roman', serif; font-size: 22px; font-weight: 700; color: #004080; margin-bottom: 4px; }
+        .msc-label { font-size: 12px; font-weight: 700; color: #004080; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; border-bottom: 2px solid #004080; padding-bottom: 6px; }
+        .msc-explain { font-size: 12px; color: #333; line-height: 1.7; }
+        .lbf-box { background: #fff; border: 2px solid #004080; border-radius: 8px; margin: 14px 18px 0; overflow: hidden; }
+        .lbf-title { background: #1a3a5c; color: #ffc107; padding: 12px 16px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px; }
+        .lbf-p { font-size: 13px; color: #222; line-height: 1.75; padding: 12px 16px 0; }
+        .lbf-data-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; }
+        .lbf-chip { background: #e7f3ff; border: 2px solid #004080; border-radius: 20px; padding: 5px 14px; font-size: 13px; font-weight: 700; color: #004080; }
+        .lbf-highlight { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; margin: 12px 16px; border-radius: 0 6px 6px 0; font-size: 13px; line-height: 1.75; color: #333; }
+        .lbf-visual-wrap { padding: 12px 16px 16px; }
+        .lbf-svg { width: 100%; max-width: 520px; display: block; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #fafafa; }
+        .lbf-reason-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; padding: 12px 16px 0; }
+        .lbf-reason-card { background: #f8f9fa; border: 2px solid #004080; border-radius: 8px; padding: 14px; }
+        .lbf-reason-icon { font-size: 22px; margin-bottom: 6px; }
+        .lbf-reason-title { font-size: 13px; font-weight: 700; color: #004080; margin-bottom: 8px; line-height: 1.4; }
+        .lbf-reason-text { font-size: 12px; color: #333; line-height: 1.7; }
+        .admin-section { border:2px solid #004080; border-radius:10px; overflow:hidden; margin:14px 0; }
+        .admin-section-header { background:#004080; color:#fff; padding:13px 18px; display:flex; align-items:center; gap:12px; font-size:15px; font-weight:700; }
+        .admin-section-body { padding:18px; background:#fff; }
+        .admin-col-row { display:flex; gap:14px; align-items:flex-end; margin-bottom:16px; flex-wrap:wrap; }
+        .admin-col-row .form-group { flex:1; min-width:200px; margin:0; }
+        .admin-type-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+        .admin-type-chip { display:flex; align-items:center; gap:6px; padding:6px 14px; border:2px solid #004080; border-radius:20px; cursor:pointer; font-family:Oswald,sans-serif; font-size:12px; font-weight:700; background:#f8f9fa; color:#004080; transition:all 0.2s; user-select:none; }
+        .admin-type-chip.active { background:#004080; color:#fff; }
+        .admin-type-chip svg { flex-shrink:0; }
+        .admin-units-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:10px; }
+        .admin-unit-card { border:2px solid #e2e8f0; border-radius:8px; padding:11px 13px; cursor:pointer; transition:all 0.2s; background:#f8f9fa; user-select:none; }
+        .admin-unit-card:hover { border-color:#004080; background:#e7f3ff; }
+        .admin-unit-card.selected { border-color:#004080; background:#004080; color:#fff; }
+        .admin-unit-card.selected .auc-count { color:#ffc107; }
+        .auc-top { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+        .auc-icon { flex-shrink:0; }
+        .auc-name { font-size:13px; font-weight:700; line-height:1.3; }
+        .auc-count { font-size:11px; color:#666; }
+        .admin-controls { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
+        .admin-controls-label { font-size:12px; color:#555; font-weight:700; text-transform:uppercase; }
+        .admin-empty { text-align:center; color:#666; font-size:13px; padding:20px; font-style:italic; }
+        .admin-badge { display:inline-flex; align-items:center; gap:5px; background:#004080; color:#fff; border-radius:4px; padding:3px 10px; font-size:12px; font-weight:700; }
+        .results-admin-banner { background:#004080; color:#fff; border-radius:6px; padding:10px 16px; margin-bottom:12px; display:flex; align-items:center; gap:10px; font-size:14px; font-weight:700; }
+        .corr-panel { border:3px solid #e63946; border-radius:10px; overflow:hidden; margin:14px 0; }
+        .corr-header { background:#e63946; color:#fff; padding:13px 18px; font-size:14px; font-weight:700; display:flex; align-items:center; gap:10px; }
+        .corr-body { background:#fff; padding:20px; }
+        .corr-method-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+        .corr-tab { padding:8px 18px; border:2px solid #004080; border-radius:20px; cursor:pointer; font-family:Oswald,sans-serif; font-weight:700; font-size:13px; background:#f8f9fa; color:#004080; transition:all 0.2s; }
+        .corr-tab.active { background:#004080; color:#fff; }
+        .corr-explain { background:#e7f3ff; border-left:4px solid #004080; padding:12px 15px; border-radius:0 6px 6px 0; font-size:13px; line-height:1.75; margin-bottom:14px; }
+        .corr-compare { overflow-x:auto; }
+        .corr-table { width:100%; border-collapse:collapse; font-size:13px; }
+        .corr-table th { background:#004080; color:#fff; padding:9px 12px; text-align:center; font-weight:700; font-size:12px; }
+        .corr-table td { padding:9px 12px; border-bottom:1px solid #e2e8f0; text-align:center; }
+        .corr-table tr:last-child td { border-bottom:none; }
+        .corr-table .param-col { text-align:left; font-weight:700; }
+        .corr-table .changed { background:#fff3cd; font-weight:700; }
+        .corr-table .sig-now { background:#d4edda; }
+        .corr-table .nosig-now { background:#f8d7da; }
+        .corr-note { background:#1a3a5c; color:#fff; border-radius:6px; padding:13px 16px; font-size:12px; line-height:1.8; margin-top:14px; }
+        .corr-note strong { color:#ffc107; }
+        .rho-display { display:inline-block; background:#004080; color:#fff; border-radius:6px; padding:6px 16px; font-weight:700; font-size:14px; margin:0 6px; }
+        .plain-panel { border-radius: 8px; padding: 16px 18px; margin: 14px 0 0; font-size: 13px; line-height: 1.8; }
+        .plain-panel.blue  { background:#e7f3ff; border:2px solid #004080; }
+        .plain-panel.green { background:#d4edda; border:2px solid #28a745; }
+        .plain-panel.amber { background:#fff3cd; border:2px solid #ffc107; }
+        .plain-panel.red   { background:#f8d7da; border:2px solid #dc3545; }
+        .plain-panel-title { font-size:13px; font-weight:700; color:#004080; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+        .plain-row { display:flex; gap:10px; margin-bottom:8px; align-items:flex-start; }
+        .plain-icon { flex-shrink:0; font-size:16px; }
+        .verdict-section { border:3px solid #004080; border-radius:12px; overflow:hidden; margin-top:20px; }
+        .verdict-header { background:#004080; color:#fff; padding:16px 22px; font-size:17px; font-weight:700; letter-spacing:0.5px; display:flex; align-items:center; gap:12px; }
+        .verdict-body { background:#fff; padding:22px; }
+        .verdict-badge { display:inline-block; padding:6px 18px; border-radius:20px; font-size:14px; font-weight:700; margin-bottom:16px; }
+        .verdict-badge.effective   { background:#d4edda; color:#155724; border:2px solid #28a745; }
+        .verdict-badge.partial     { background:#fff3cd; color:#856404; border:2px solid #ffc107; }
+        .verdict-badge.ineffective { background:#f8d7da; color:#721c24; border:2px solid #dc3545; }
+        .verdict-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:16px 0; }
+        .verdict-card { background:#f8f9fa; border:2px solid #004080; border-radius:8px; padding:14px; }
+        .verdict-card-title { font-size:12px; font-weight:700; color:#004080; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; border-bottom:2px solid #004080; padding-bottom:5px; }
+        .verdict-card-value { font-size:20px; font-weight:700; color:#004080; margin-bottom:4px; }
+        .verdict-card-desc { font-size:12px; color:#333; line-height:1.6; }
+        .verdict-conclusion { background:#1a3a5c; color:#fff; border-radius:8px; padding:16px 18px; font-size:14px; line-height:1.85; margin-top:16px; }
+        .verdict-conclusion strong { color:#ffc107; }
+        .duration-bar-wrap { margin:14px 0; }
+        .duration-bar-label { font-size:12px; color:#555; margin-bottom:6px; }
+        .duration-bar-track { height:22px; background:#e2e8f0; border-radius:11px; overflow:hidden; position:relative; }
+        .duration-bar-fill { height:100%; border-radius:11px; display:flex; align-items:center; padding-left:10px; font-size:11px; font-weight:700; color:#fff; transition:width 0.8s ease; }
+        .example-block { border: 2px solid #004080; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+        .example-header { background: #004080; color: #fff; padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; user-select: none; }
+        .example-header:hover { background: #0056b3; }
+        .example-title-row { display: flex; align-items: center; gap: 16px; }
+        .ex-num { background: #ffc107; color: #000; font-size: 20px; font-weight: 700; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .ex-title { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
+        .ex-subtitle { font-size: 12px; font-weight: 400; opacity: 0.85; margin-top: 3px; }
+        .ex-toggle-icon { font-size: 18px; flex-shrink: 0; transition: transform 0.3s; }
+        .example-body { padding: 22px; background: #fff; }
+        .ex-context { background: #e7f3ff; border-left: 4px solid #004080; padding: 14px 16px; border-radius: 0 6px 6px 0; font-size: 14px; line-height: 1.7; margin-bottom: 18px; }
+        .ex-results-table { margin-bottom: 18px; }
+        .ex-results-title { font-size: 13px; font-weight: 700; color: #004080; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+        .ex-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .ex-table th { background: #004080; color: #fff; padding: 10px 14px; text-align: left; font-weight: 700; font-size: 12px; }
+        .ex-table td { padding: 10px 14px; border-bottom: 1px solid #e2e8f0; vertical-align: top; line-height: 1.6; }
+        .ex-table tr:last-child td { border-bottom: none; }
+        .ex-table tr:hover td { background: #f8f9fa; }
+        .ex-table .ex-baseline td { background: #f0f7ff; }
+        .ex-table .ex-sig td { background: #f0fff4; }
+        .coef-neg-val { color: #dc3545; font-weight: 700; }
+        .coef-pos-val { color: #28a745; font-weight: 700; }
+        .ex-verdict { display: flex; gap: 16px; align-items: flex-start; padding: 16px 18px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; line-height: 1.7; }
+        .success-verdict { background: #d4edda; border: 2px solid #28a745; }
+        .fail-verdict { background: #fff3cd; border: 2px solid #ffc107; }
+        .ex-verdict-icon { font-size: 24px; flex-shrink: 0; }
+        .ex-params-explained { background: #f8f9fa; border: 2px solid #004080; border-radius: 8px; padding: 16px 18px; font-size: 13px; line-height: 1.75; color: #222; }
+        .ex-params-explained strong { color: #004080; }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .content-inner { padding: 15px; }
+            .page-header h1 { font-size: 18px; }
+            .form-row, .form-row-3 { grid-template-columns: 1fr; }
+            .int-item { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .feature-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="page-container">
+
+    <div class="page-header">
+        <div class="logo-row">
+            <div class="logo-box">
+                <img src="https://github.com/mohamedsillahkanu/gdp-dashboard-2/raw/6c7463b0d5c3be150aafae695a4bcbbd8aeb1499/ICF-SL.jpg" alt="ICF-SL Logo">
+            </div>
+        </div>
+        <h3>Informatics Consultancy Firm-Sierra Leone (ICF-SL)</h3>
+        <p class="tagline"><em>Driving Data-Driven Solutions for Health and Development</em></p>
+        <h1>INTERRUPTED TIME SERIES (ITS) ANALYSIS</h1>
+        <p class="subtitle">Multi-Intervention Segmented Regression for Health Programme Evaluation</p>
+    </div>
+
+    <div class="content-card">
+        <div class="content-inner">
+            <div id="alertContainer"></div>
+
+            <!-- About -->
+            <div class="section-header">
+                <span class="section-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                <span class="section-title">ABOUT THIS ANALYSIS</span>
+            </div>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>What is ITS Analysis?</h4>
+                    <p>Interrupted Time Series (ITS) uses <strong>segmented regression</strong> to evaluate one or more interventions on a repeatedly measured outcome. This tool supports <strong>multiple interventions</strong>, each producing its own level change (β₂ₖ) and slope change (β₃ₖ) estimate.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>When to Use ITS</h4>
+                    <ul>
+                        <li>Evaluating malaria policy or LLIN distribution impact</li>
+                        <li>Assessing sequential health campaign effects</li>
+                        <li>Monitoring reporting rate changes after DHIS2 training</li>
+                        <li>Any programme with time-series data and known intervention dates</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <h4>Requirements & Assumptions</h4>
+                    <ul>
+                        <li><strong>Year + Month columns</strong> in your data file</li>
+                        <li><strong>Enough pre-period data</strong> before first intervention</li>
+                        <li><strong>Independence:</strong> No major confounders coinciding</li>
+                        <li><strong>Linearity:</strong> Roughly linear trends in each segment</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Formula -->
+            <div class="section-header">
+                <span class="section-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12L12 12l6 8H6"/></svg></span>
+                <span class="section-title">SEGMENTED REGRESSION MODEL</span>
+            </div>
+            <div class="formula-box">
+                <h4>Multi-Intervention ITS Model</h4>
+                <div class="formula">Y<sub>t</sub> = β<sub>0</sub> + β<sub>1</sub>·T + Σ<sub>k</sub>(β<sub>2k</sub>·D<sub>k</sub> + β<sub>3k</sub>·P<sub>k</sub>) + ε<sub>t</sub></div>
+                <p class="formula-note">Each intervention k adds a level-change dummy D<sub>k</sub> and a time-since-intervention variable P<sub>k</sub>.<br>
+                <strong>β<sub>2k</sub></strong> = immediate level change at intervention k &nbsp;|&nbsp; <strong>β<sub>3k</sub></strong> = slope change after intervention k</p>
+            </div>
+            <div class="parameters-grid">
+                <div class="parameter-card">
+                    <div class="param-symbol">β<sub>0</sub></div>
+                    <div class="param-name">Baseline Intercept</div>
+                    <div class="param-desc">Estimated outcome at the start of the series (T = 1). Represents the baseline level before any intervention effects.</div>
+                </div>
+                <div class="parameter-card">
+                    <div class="param-symbol">β<sub>1</sub></div>
+                    <div class="param-name">Pre-Intervention Slope</div>
+                    <div class="param-desc">Monthly rate of change in the outcome before the first intervention. Tells you the underlying trend before any programme began.</div>
+                </div>
+                <div class="parameter-card">
+                    <div class="param-symbol">β<sub>2k</sub></div>
+                    <div class="param-name">Level Change (Intervention k)</div>
+                    <div class="param-desc">Immediate step change at the time of intervention k. Negative value = sudden drop; positive = sudden increase.</div>
+                </div>
+                <div class="parameter-card">
+                    <div class="param-symbol">β<sub>3k</sub></div>
+                    <div class="param-name">Slope Change (Intervention k)</div>
+                    <div class="param-desc">Change in the monthly trend after intervention k. Negative = slowing/reversal of an increasing trend; positive = acceleration.</div>
+                </div>
+                <div class="parameter-card">
+                    <div class="param-symbol">D<sub>k</sub></div>
+                    <div class="param-name">Intervention Dummy k</div>
+                    <div class="param-desc">Binary: 0 before intervention k, 1 at and after intervention k. Controls the level-change estimate β<sub>2k</sub>.</div>
+                </div>
+                <div class="parameter-card">
+                    <div class="param-symbol">P<sub>k</sub></div>
+                    <div class="param-name">Time Since Intervention k</div>
+                    <div class="param-desc">0 before intervention k; 1, 2, 3, … counting months after. Controls the slope-change estimate β<sub>3k</sub>.</div>
+                </div>
+                <div class="parameter-card">
+                    <div class="param-symbol">R²</div>
+                    <div class="param-name">Model Fit</div>
+                    <div class="param-desc">Proportion of variance explained. Values ≥ 0.70 indicate good fit. Interpret alongside Durbin-Watson.</div>
+                </div>
+                <div class="parameter-card">
+                    <div class="param-symbol">DW</div>
+                    <div class="param-name">Durbin-Watson</div>
+                    <div class="param-desc">Tests residual autocorrelation. DW ≈ 2: OK. DW &lt; 1.5: positive autocorrelation. DW &gt; 2.5: negative autocorrelation.</div>
+                </div>
+            </div>
+
+            <!-- Data Input -->
+            <div class="section-header">
+                <span class="section-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
+                <span class="section-title">DATA INPUT</span>
+            </div>
+
+            <div class="config-card">
+                <h4>Download Sample Data</h4>
+                <p style="margin-bottom:12px;color:#333;">Sample monthly malaria dataset (Jan 2021 – Dec 2024) with two intervention periods built in.</p>
+                <button class="btn btn-gold" onclick="downloadSampleData()"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Download Sample CSV</button>
+            </div>
+
+            <div class="upload-section" id="uploadZone">
+                <h3><span style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Upload Your Time Series Data</h3>
+                <p>CSV or Excel — one row per month, with <strong>Year</strong> and <strong>Month</strong> columns</p>
+                <label class="file-input-wrapper">
+                    Choose File
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+                </label>
+                <div id="fileStatus" class="file-status"></div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>Required:</strong> Your file must have a <strong>Year</strong> column (e.g. 2023) and a <strong>Month</strong> column (1–12 or Jan/Feb/…). Select your outcome column below. X-axis will be formatted as <strong>YYYY-MM</strong>.
+            </div>
+
+            <div id="columnSelectSection" class="config-card hidden">
+                <h4>Map Columns</h4>
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label class="form-label">Year Column</label>
+                        <select id="yearColSelect" class="form-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Month Column</label>
+                        <select id="monthColSelect" class="form-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Outcome Column (Y)</label>
+                        <select id="outcomeColSelect" class="form-select"></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Outcome Label (for charts/tables)</label>
+                        <input type="text" id="outcomeLabelInput" class="form-input" placeholder="e.g. Monthly Malaria Cases">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Significance Level (α)</label>
+                        <select id="alphaSelect" class="form-select">
+                            <option value="0.01">0.01</option>
+                            <option value="0.05" selected>0.05</option>
+                            <option value="0.10">0.10</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Admin Level Selector -->
+            <div id="adminSection" class="admin-section hidden" style="margin-top:16px;">
+                <div class="admin-section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    ADMIN LEVEL FILTER (Optional)
+                </div>
+                <div class="admin-section-body">
+                    <div class="admin-col-row">
+                        <div class="form-group">
+                            <label class="form-label">Admin Level Column</label>
+                            <select id="adminColSelect" class="form-select" onchange="buildAdminUnits()">
+                                <option value="">-- None (use all data) --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="adminTypeGroup" style="display:none;">
+                            <label class="form-label">Level Type (label only)</label>
+                            <div class="admin-type-chips">
+                                <div class="admin-type-chip active" onclick="setAdminType(this,'District')" id="atype-district"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> District</div>
+                                <div class="admin-type-chip" onclick="setAdminType(this,'Chiefdom')" id="atype-chiefdom"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Chiefdom</div>
+                                <div class="admin-type-chip" onclick="setAdminType(this,'National')" id="atype-national"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> National</div>
+                                <div class="admin-type-chip" onclick="setAdminType(this,'Other')" id="atype-custom"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Other</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="adminUnitsWrap" class="hidden">
+                        <div class="admin-controls">
+                            <span class="admin-controls-label">Select units to analyse:</span>
+                            <button class="btn btn-sm btn-secondary" onclick="selectAllAdminUnits()">Select All</button>
+                            <button class="btn btn-sm btn-danger" onclick="clearAdminUnits()">Clear</button>
+                            <span id="adminSelCount" style="font-size:12px;color:#555;"></span>
+                        </div>
+                        <div class="admin-units-grid" id="adminUnitsGrid"></div>
+                    </div>
+                    <div id="adminEmpty" class="admin-empty hidden">No admin column selected — analysis will use all rows.</div>
+                </div>
+            </div>
+
+            <!-- Intervention Manager -->
+            <div id="interventionSection" class="hidden">
+                <div class="section-header" style="margin-top:20px;">
+                    <span class="section-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+                    <span class="section-title">INTERVENTION PERIODS</span>
+                </div>
+
+                <div class="int-manager">
+                    <div class="int-manager-header">
+                        <span>Define Interventions (add as many as needed)</span>
+                        <button class="btn btn-gold btn-sm" onclick="addIntervention()">+ Add Intervention</button>
+                    </div>
+                    <div class="int-list" id="interventionList">
+                        <div class="int-empty" id="intEmpty">No interventions added yet. Click "+ Add Intervention" above.</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info" style="margin-top:10px;">
+                    <strong>Tip:</strong> Each intervention needs a <strong>label</strong> (e.g. "LLIN Distribution"), a <strong>Year</strong>, and a <strong>Month</strong> (1–12). The model will estimate an immediate level change and a slope change for each intervention independently.
+                </div>
+
+                <div style="margin-top:15px;">
+                    <button class="btn btn-success" onclick="runAnalysis()"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6M9 3v8l-4 9h14l-4-9V3"/><line x1="6.6" y1="15" x2="17.4" y2="15"/></svg></span> Run ITS Analysis</button>
+                    <button class="btn btn-danger btn-sm" onclick="resetTool()"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span> Reset</button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsSection" class="hidden">
+                <div class="section-header" style="margin-top:20px;">
+                    <span class="section-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+                    <span class="section-title">REGRESSION RESULTS</span>
+                </div>
+
+                <div id="adminResultsBanner"></div>
+                <div class="stats-grid" id="quickStats"></div>
+
+                <div id="interpretation" class="interpretation">
+                    <h4><span style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span> Overall Interpretation</h4>
+                    <div id="interpretationText"></div>
+                </div>
+
+                <div id="warningBox" class="warning-box hidden">
+                    <strong><span style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#856404" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> Autocorrelation Warning:</strong> <span id="warningText"></span>
+                </div>
+                <div id="correctionPanel"></div>
+
+                <div class="result-box">
+                    <div class="result-title"><span style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Regression Coefficients Table</div>
+                    <div class="pub-table-container" id="pubCoefTable"></div>
+                    <div id="coefInterpretation"></div>
+                    <div class="button-row">
+                        <button class="btn btn-gold btn-sm" onclick="copyTableById('pubCoefTable')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span> Copy Table</button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportHTML()"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Export HTML</button>
+                    </div>
+                </div>
+
+                <div class="result-box">
+                    <div class="result-title"><span style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> ITS Design Matrix</div>
+                    <div class="data-preview" id="designMatrixTable"></div>
+                    <div id="designInterpretation"></div>
+                </div>
+
+                <div class="result-box">
+                    <div class="result-title"><span style="display:inline-flex;align-items:center;vertical-align:middle;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span> ITS Visualizations</div>
+                    <div class="chart-tab-bar">
+                        <div class="chart-tab active" id="ctab-main" onclick="switchChartTab('main',this)">ITS Plot</div>
+                        <div class="chart-tab" id="ctab-residuals" onclick="switchChartTab('residuals',this)">Residuals</div>
+                        <div class="chart-tab" id="ctab-gap" onclick="switchChartTab('gap',this)">Counterfactual Gap</div>
+                    </div>
+                    <div class="chart-container" id="mainChart"></div>
+                    <div id="chartInterpretation" style="margin-top:14px;"></div>
+                    <div class="button-row">
+                        <button class="btn btn-gold btn-sm" onclick="exportChart('png')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> PNG</button>
+                        <button class="btn btn-gold btn-sm" onclick="exportChart('svg')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> SVG</button>
+                    </div>
+                </div>
+
+                <!-- FINAL VERDICT -->
+                <div id="finalVerdictSection"></div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="page-footer">
+        Informatics Consultancy Firm-Sierra Leone (ICF-SL)
+        <p><em>Driving Data-Driven Solutions for Health and Development</em></p>
+    </div>
+</div>
+
+<script>
+// ===== STATE =====
+var rawData = [], rawCols = [];
+var itsResults = null;
+var interventionCount = 0;
+var availablePeriods = [];
+var INT_COLORS = ['#e63946','#2a9d8f','#e76f51','#457b9d','#f4a261','#8338ec','#06d6a0','#fb5607'];
+
+// ===== ALERTS =====
+function showAlert(msg, type) {
+    var c = document.getElementById('alertContainer');
+    c.innerHTML = '<div class="alert alert-' + type + '">' + msg + '</div>';
+    setTimeout(function(){ c.innerHTML = ''; }, 7000);
+}
+
+// ===== MONTH PARSING - IMPROVED =====
+function parseMonth(val) {
+    if (val === null || val === undefined || val === '') return null;
+    
+    var v = String(val).trim();
+    
+    // Try numeric: 1-12
+    var num = parseInt(v);
+    if (!isNaN(num) && num >= 1 && num <= 12) return num;
+    
+    // Try text: Jan, Feb, Jan., January, etc.
+    var monthMap = { 
+        jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, 
+        jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+        january: 1, february: 2, march: 3, april: 4, june: 6,
+        july: 7, august: 8, september: 9, october: 10, november: 11, december: 12
+    };
+    
+    var key = v.toLowerCase().replace(/\./g, '').substring(0, 3);
+    if (monthMap[key]) return monthMap[key];
+    
+    // Try full name
+    var fullKey = v.toLowerCase().replace(/\./g, '');
+    if (monthMap[fullKey]) return monthMap[fullKey];
+    
+    return null;
+}
+
+function padTwo(n) { return (n < 10 ? '0' : '') + String(n); }
+
+// ===== NEW: AGGREGATE TIME SERIES =====
+function aggregateTimeSeries(data, yearCol, monthCol, outcomeCol) {
+    var aggregated = {};
+    
+    data.forEach(function(row) {
+        var yr = parseInt(row[yearCol]);
+        var mo = parseMonth(row[monthCol]);
+        var y = parseFloat(row[outcomeCol]);
+        
+        if (isNaN(yr) || mo === null || isNaN(y)) return;
+        
+        var key = yr + '-' + padTwo(mo);
+        
+        if (!aggregated[key]) {
+            aggregated[key] = { yr: yr, mo: mo, y_sum: 0, count: 0 };
+        }
+        aggregated[key].y_sum += y;
+        aggregated[key].count += 1;
+    });
+    
+    var result = Object.keys(aggregated)
+        .map(function(key) { return aggregated[key]; })
+        .sort(function(a, b) { return (a.yr * 100 + a.mo) - (b.yr * 100 + b.mo); });
+    
+    return result;
+}
+
+// ===== SAMPLE DOWNLOAD =====
+function downloadSampleData() {
+    var lines = ['Year,Month,Malaria_Cases,RDT_Positivity_Pct,LLIN_Coverage_Pct'];
+    var data = [
+        [2021,1,312,42,38],[2021,2,298,40,38],[2021,3,340,45,39],[2021,4,365,48,40],
+        [2021,5,420,52,41],[2021,6,480,58,42],[2021,7,510,61,42],[2021,8,495,59,43],
+        [2021,9,470,57,43],[2021,10,430,54,44],[2021,11,380,49,44],[2021,12,330,43,45],
+        [2022,1,320,42,45],[2022,2,308,41,46],[2022,3,355,46,47],[2022,4,375,49,48],
+        [2022,5,430,53,48],[2022,6,488,59,49],[2022,7,518,62,50],[2022,8,502,60,51],
+        [2022,9,475,57,51],[2022,10,438,54,52],[2022,11,385,49,52],[2022,12,335,43,53],
+        [2023,1,285,38,58],[2023,2,265,36,60],[2023,3,290,39,61],[2023,4,270,37,62],
+        [2023,5,310,42,63],[2023,6,340,45,64],[2023,7,355,47,65],[2023,8,340,45,65],
+        [2023,9,315,43,66],[2023,10,285,39,67],[2023,11,255,35,67],[2023,12,230,32,68],
+        [2024,1,220,31,68],[2024,2,208,30,69],[2024,3,225,32,70],[2024,4,215,31,70],
+        [2024,5,245,34,71],[2024,6,268,37,72],
+        [2024,7,185,27,75],[2024,8,172,25,76],[2024,9,160,24,77],[2024,10,148,22,78],
+        [2024,11,135,21,78],[2024,12,122,19,79]
+    ];
+    data.forEach(function(r) { lines.push(r.join(',')); });
+    var csv = lines.join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'ITS_sample_data.csv';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showAlert('Downloaded! Upload it, map Year/Month/Malaria_Cases, then add interventions: "LLIN Campaign" at 2023-01 and "IPTp Scale-Up" at 2024-07.', 'success');
+}
+
+// ===== FILE UPLOAD =====
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    var file = e.target.files[0]; if (!file) return;
+    var statusEl = document.getElementById('fileStatus');
+    statusEl.textContent = 'Loading...'; statusEl.className = 'file-status';
+    var reader = new FileReader();
+    var isCSV = file.name.toLowerCase().endsWith('.csv');
+    reader.onload = function(ev) {
+        try {
+            if (isCSV) {
+                var res = Papa.parse(ev.target.result, { header: true, skipEmptyLines: true, dynamicTyping: true });
+                rawData = res.data; rawCols = res.meta.fields || [];
+            } else {
+                var wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+                rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                rawCols = Object.keys(rawData[0] || {});
+            }
+            statusEl.textContent = '\u2713 ' + file.name + ' (' + rawData.length + ' rows, ' + rawCols.length + ' cols)';
+            statusEl.className = 'file-status loaded';
+            document.getElementById('uploadZone').classList.add('loaded');
+            populateColumnSelects();
+            document.getElementById('columnSelectSection').classList.remove('hidden');
+            document.getElementById('adminSection').classList.remove('hidden');
+            document.getElementById('interventionSection').classList.remove('hidden');
+            showAlert('File loaded! Map your columns and add interventions below.', 'success');
+        } catch(err) {
+            statusEl.textContent = '\u2717 Error: ' + err.message;
+            statusEl.className = 'file-status error';
+            showAlert('Error: ' + err.message, 'error');
+        }
+    };
+    if (isCSV) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+});
+
+function populateColumnSelects() {
+    var ids = ['yearColSelect', 'monthColSelect', 'outcomeColSelect'];
+    ids.forEach(function(id) {
+        var s = document.getElementById(id);
+        s.innerHTML = '<option value="">-- Select --</option>';
+        rawCols.forEach(function(c) { s.innerHTML += '<option value="' + c + '">' + c + '</option>'; });
+    });
+    var autoMap = { yearColSelect: ['year','yr','anno'], monthColSelect: ['month','mon','mois','mes'], outcomeColSelect: ['cases','malaria','outcome','value','count','y'] };
+    Object.keys(autoMap).forEach(function(id) {
+        var sel = document.getElementById(id);
+        rawCols.forEach(function(c) {
+            autoMap[id].forEach(function(kw) {
+                if (c.toLowerCase().indexOf(kw) !== -1 && sel.value === '') sel.value = c;
+            });
+        });
+    });
+    var adminSel = document.getElementById('adminColSelect');
+    var prevAdmin = adminSel.value;
+    adminSel.innerHTML = '<option value="">-- None (use all data) --</option>';
+    rawCols.forEach(function(c) { adminSel.innerHTML += '<option value="' + c + '">' + c + '</option>'; });
+    rawCols.forEach(function(c) {
+        var cl = c.toLowerCase();
+        if ((cl.indexOf('district') !== -1 || cl.indexOf('chiefdom') !== -1 || cl.indexOf('region') !== -1 || cl.indexOf('province') !== -1 || cl.indexOf('area') !== -1) && adminSel.value === '') {
+            adminSel.value = c;
+        }
+    });
+    if (prevAdmin) adminSel.value = prevAdmin;
+    buildAdminUnits();
+    document.getElementById('yearColSelect').onchange = buildAvailablePeriods;
+    document.getElementById('monthColSelect').onchange = buildAvailablePeriods;
+    document.getElementById('outcomeColSelect').onchange = buildAvailablePeriods;
+    buildAvailablePeriods();
+}
+
+// ===== IMPROVED: BUILD AVAILABLE PERIODS =====
+function buildAvailablePeriods() {
+    var yearCol = document.getElementById('yearColSelect').value;
+    var monthCol = document.getElementById('monthColSelect').value;
+    var outCol = document.getElementById('outcomeColSelect').value;
+    
+    availablePeriods = [];
+    
+    if (!yearCol || !monthCol || !outCol) return;
+    
+    var adminCol = document.getElementById('adminColSelect').value;
+    var dataToUse = adminCol && adminSelectedUnits.length > 0 
+        ? getAdminFilteredData() 
+        : rawData;
+    
+    var timeSeries = aggregateTimeSeries(dataToUse, yearCol, monthCol, outCol);
+    
+    availablePeriods = timeSeries.map(function(ts) {
+        return { 
+            label: ts.yr + '-' + padTwo(ts.mo), 
+            yr: ts.yr, 
+            mo: ts.mo, 
+            key: ts.yr * 100 + ts.mo 
+        };
+    });
+    
+    document.querySelectorAll('.int-item').forEach(function(item) {
+        var id = item.id;
+        var sel = document.getElementById(id + '_period');
+        if (sel) {
+            var prev = sel.value;
+            sel.innerHTML = buildPeriodOptions();
+            if (prev) sel.value = prev;
+        }
+    });
+}
+
+function buildPeriodOptions() {
+    if (availablePeriods.length === 0) return '<option value="">-- Map Year & Month columns first --</option>';
+    var html = '<option value="">-- Select Period --</option>';
+    availablePeriods.forEach(function(p) {
+        html += '<option value="' + p.label + '">' + p.label + '</option>';
+    });
+    return html;
+}
+
+function resetTool() {
+    rawData = []; rawCols = []; itsResults = null; interventionCount = 0; availablePeriods = [];
+    document.getElementById('uploadZone').classList.remove('loaded');
+    document.getElementById('fileStatus').textContent = '';
+    document.getElementById('fileStatus').className = 'file-status';
+    document.getElementById('fileInput').value = '';
+    document.getElementById('columnSelectSection').classList.add('hidden');
+    document.getElementById('adminSection').classList.add('hidden');
+    document.getElementById('interventionSection').classList.add('hidden');
+    document.getElementById('resultsSection').classList.add('hidden');
+    document.getElementById('adminColSelect').value = '';
+    document.getElementById('adminUnitsWrap').classList.add('hidden');
+    document.getElementById('adminUnitsGrid').innerHTML = '';
+    adminSelectedUnits = [];
+    adminColType = 'District';
+    document.getElementById('interventionList').innerHTML = '<div class="int-empty" id="intEmpty">No interventions added yet. Click "+ Add Intervention" above.</div>';
+}
+
+// ===== INTERVENTION MANAGER =====
+function addIntervention() {
+    var empty = document.getElementById('intEmpty');
+    if (empty) empty.remove();
+    var colorIdx = interventionCount % INT_COLORS.length;
+    var color = INT_COLORS[colorIdx];
+    var id = 'int_' + (++interventionCount);
+    var div = document.createElement('div');
+    div.className = 'int-item';
+    div.id = id;
+    div.innerHTML =
+        '<input type="text" placeholder="Label (e.g. LLIN Campaign)" id="' + id + '_label" value="Intervention ' + interventionCount + '" style="background:#fff;">' +
+        '<select id="' + id + '_period" class="form-select" style="padding:8px 10px;font-size:13px;">' + buildPeriodOptions() + '</select>' +
+        '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#555;">' +
+            '<span class="int-color-dot" style="background:' + color + ';width:14px;height:14px;border-radius:50%;display:inline-block;flex-shrink:0;"></span>' +
+            'Estimates level change (\u03B2\u2082) + slope change (\u03B2\u2083)' +
+        '</div>' +
+        '<button class="int-delete" onclick="removeIntervention(\'' + id + '\')" title="Remove">\u00D7</button>';
+    document.getElementById('interventionList').appendChild(div);
+}
+
+function removeIntervention(id) {
+    var el = document.getElementById(id);
+    if (el) el.remove();
+    var list = document.getElementById('interventionList');
+    if (list.children.length === 0) {
+        list.innerHTML = '<div class="int-empty" id="intEmpty">No interventions added yet. Click "+ Add Intervention" above.</div>';
+    }
+}
+
+function getInterventions() {
+    var list = document.getElementById('interventionList');
+    var items = list.querySelectorAll('.int-item');
+    var interventions = [];
+    var colorIdx = 0;
+    items.forEach(function(item) {
+        var id = item.id;
+        var label = document.getElementById(id + '_label').value.trim() || 'Intervention';
+        var periodVal = document.getElementById(id + '_period').value;
+        var color = INT_COLORS[colorIdx % INT_COLORS.length];
+        colorIdx++;
+        if (periodVal) {
+            var parts = periodVal.split('-');
+            var yr = parseInt(parts[0]);
+            var mo = parseInt(parts[1]);
+            if (!isNaN(yr) && !isNaN(mo)) {
+                interventions.push({ label: label, year: yr, month: mo, color: color });
+            }
+        }
+    });
+    return interventions;
+}
+
+// ===== ADMIN LEVEL SYSTEM =====
+var adminSelectedUnits = [];
+var adminColType = 'District';
+
+var ADMIN_ICONS = {
+    district: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>',
+    chiefdom: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+    national: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+    other: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+};
+
+function getAdminIcon() {
+    var t = adminColType.toLowerCase();
+    return ADMIN_ICONS[t] || ADMIN_ICONS.other;
+}
+
+function setAdminType(el, type) {
+    adminColType = type;
+    document.querySelectorAll('.admin-type-chip').forEach(function(c){ c.classList.remove('active'); });
+    el.classList.add('active');
+    renderAdminUnitCards();
+}
+
+function buildAdminUnits() {
+    var col = document.getElementById('adminColSelect').value;
+    var typeGroup = document.getElementById('adminTypeGroup');
+    var wrap = document.getElementById('adminUnitsWrap');
+    var empty = document.getElementById('adminEmpty');
+
+    if (!col) {
+        typeGroup.style.display = 'none';
+        wrap.classList.add('hidden');
+        empty.classList.remove('hidden');
+        adminSelectedUnits = [];
+        return;
+    }
+    typeGroup.style.display = '';
+    empty.classList.add('hidden');
+
+    var counts = {};
+    rawData.forEach(function(row) {
+        var v = String(row[col] !== undefined && row[col] !== null ? row[col] : '').trim();
+        if (v) counts[v] = (counts[v] || 0) + 1;
+    });
+    var units = Object.keys(counts).sort();
+
+    var colLower = col.toLowerCase();
+    if (colLower.indexOf('district') !== -1) { adminColType = 'District'; }
+    else if (colLower.indexOf('chiefdom') !== -1) { adminColType = 'Chiefdom'; }
+    else if (colLower.indexOf('region') !== -1 || colLower.indexOf('province') !== -1) { adminColType = 'National'; }
+    document.querySelectorAll('.admin-type-chip').forEach(function(c){ c.classList.remove('active'); });
+    var matchId = 'atype-' + adminColType.toLowerCase();
+    var matchEl = document.getElementById(matchId);
+    if (matchEl) matchEl.classList.add('active');
+
+    adminSelectedUnits = units.slice();
+
+    wrap.classList.remove('hidden');
+    wrap._unitCounts = counts;
+    wrap._units = units;
+    renderAdminUnitCards();
+}
+
+function renderAdminUnitCards() {
+    var wrap = document.getElementById('adminUnitsWrap');
+    var grid = document.getElementById('adminUnitsGrid');
+    if (!wrap._units) return;
+    var units = wrap._units, counts = wrap._unitCounts;
+    var icon = getAdminIcon();
+    var html = '';
+    units.forEach(function(u) {
+        var sel = adminSelectedUnits.indexOf(u) !== -1;
+        html += '<div class="admin-unit-card' + (sel ? ' selected' : '') + '" onclick="toggleAdminUnit(this,\'' + u.replace(/'/g, "\\'") + '\')">' +
+            '<div class="auc-top"><span class="auc-icon">' + icon + '</span><span class="auc-name">' + u + '</span></div>' +
+            '<div class="auc-count">' + counts[u] + ' rows</div>' +
+            '</div>';
+    });
+    grid.innerHTML = html;
+    updateAdminSelCount();
+}
+
+function toggleAdminUnit(el, unit) {
+    var idx = adminSelectedUnits.indexOf(unit);
+    if (idx === -1) { adminSelectedUnits.push(unit); el.classList.add('selected'); }
+    else { adminSelectedUnits.splice(idx, 1); el.classList.remove('selected'); }
+    var countEl = el.querySelector('.auc-count');
+    if (countEl) countEl.className = 'auc-count' + (el.classList.contains('selected') ? '' : '');
+    updateAdminSelCount();
+    buildAvailablePeriods();
+}
+
+function selectAllAdminUnits() {
+    var wrap = document.getElementById('adminUnitsWrap');
+    if (!wrap._units) return;
+    adminSelectedUnits = wrap._units.slice();
+    renderAdminUnitCards();
+    buildAvailablePeriods();
+}
+
+function clearAdminUnits() {
+    adminSelectedUnits = [];
+    renderAdminUnitCards();
+    buildAvailablePeriods();
+}
+
+function updateAdminSelCount() {
+    var wrap = document.getElementById('adminUnitsWrap');
+    var total = wrap._units ? wrap._units.length : 0;
+    document.getElementById('adminSelCount').textContent = adminSelectedUnits.length + ' of ' + total + ' selected';
+}
+
+function getAdminFilteredData() {
+    var col = document.getElementById('adminColSelect').value;
+    if (!col || adminSelectedUnits.length === 0) return rawData;
+    return rawData.filter(function(row) {
+        var v = String(row[col] !== undefined && row[col] !== null ? row[col] : '').trim();
+        return adminSelectedUnits.indexOf(v) !== -1;
+    });
+}
+
+function getAdminLabel() {
+    var col = document.getElementById('adminColSelect').value;
+    if (!col) return null;
+    if (adminSelectedUnits.length === 0) return adminColType + ': None selected';
+    var wrap = document.getElementById('adminUnitsWrap');
+    var total = wrap._units ? wrap._units.length : 0;
+    if (adminSelectedUnits.length === total) return 'All ' + adminColType + 's';
+    if (adminSelectedUnits.length <= 3) return adminColType + ': ' + adminSelectedUnits.join(', ');
+    return adminSelectedUnits.length + ' ' + adminColType + 's selected';
+}
+
+// ===== IMPROVED: RUN ANALYSIS =====
+function runAnalysis() {
+    var yearCol = document.getElementById('yearColSelect').value;
+    var monthCol = document.getElementById('monthColSelect').value;
+    var outCol = document.getElementById('outcomeColSelect').value;
+    var alpha = parseFloat(document.getElementById('alphaSelect').value);
+    var outLabel = document.getElementById('outcomeLabelInput').value.trim() || outCol;
+
+    if (!yearCol || !monthCol || !outCol) { showAlert('Please map Year, Month, and Outcome columns.', 'warning'); return; }
+
+    var interventions = getInterventions();
+    if (interventions.length === 0) { showAlert('Add at least one intervention period.', 'warning'); return; }
+
+    var adminCol = document.getElementById('adminColSelect').value;
+    if (adminCol && adminSelectedUnits.length === 0) { showAlert('Please select at least one ' + adminColType + ' from the admin filter.', 'warning'); return; }
+    var filteredData = getAdminFilteredData();
+    var adminLabel = getAdminLabel();
+
+    // ===== NEW: Aggregate the time series =====
+    var timeSeries = aggregateTimeSeries(filteredData, yearCol, monthCol, outCol);
+    
+    if (timeSeries.length < 6) { showAlert('Not enough valid month-year periods (need at least 6). Check your data.', 'warning'); return; }
+
+    // ===== Build regression data from aggregated series =====
+    var n = timeSeries.length;
+    var T = [], Y = [], labels = [];
+    
+    for (var i = 0; i < n; i++) {
+        T.push(i + 1);
+        Y.push(timeSeries[i].y_sum);
+        labels.push(timeSeries[i].yr + '-' + padTwo(timeSeries[i].mo));
+    }
+
+    // Validate interventions
+    var firstPeriod = timeSeries[0].yr * 100 + timeSeries[0].mo;
+    var lastPeriod = timeSeries[n-1].yr * 100 + timeSeries[n-1].mo;
+    
+    for (var k = 0; k < interventions.length; k++) {
+        var ip = interventions[k].year * 100 + interventions[k].month;
+        if (ip <= firstPeriod) { showAlert('Intervention "' + interventions[k].label + '" must be after ' + labels[0] + '.', 'warning'); return; }
+        if (ip > lastPeriod) { showAlert('Intervention "' + interventions[k].label + '" is after ' + labels[n-1] + '.', 'warning'); return; }
+    }
+
+    interventions.sort(function(a, b) { return (a.year * 100 + a.month) - (b.year * 100 + b.month); });
+
+    var intPoints = interventions.map(function(iv) {
+        var target = iv.year * 100 + iv.month;
+        for (var i = 0; i < n; i++) {
+            if (timeSeries[i].yr * 100 + timeSeries[i].mo >= target) return i + 1;
+        }
+        return n;
+    });
+
+    var K = interventions.length;
+    var X = [];
+    for (var i = 0; i < n; i++) {
+        var row = [1, T[i]];
+        for (var k = 0; k < K; k++) {
+            var intT = intPoints[k];
+            var D = T[i] >= intT ? 1 : 0;
+            var P = T[i] >= intT ? T[i] - intT + 1 : 0;
+            row.push(D, P);
+        }
+        X.push(row);
+    }
+
+    var Darr = [], Parr = [];
+    for (var k = 0; k < K; k++) {
+        var da = [], pa = [];
+        for (var i = 0; i < n; i++) {
+            var intT = intPoints[k];
+            da.push(T[i] >= intT ? 1 : 0);
+            pa.push(T[i] >= intT ? T[i] - intT + 1 : 0);
+        }
+        Darr.push(da); Parr.push(pa);
+    }
+
+    var res = olsRegress(X, Y);
+    if (!res) { showAlert('Regression failed — possibly too many interventions for your sample size.', 'error'); return; }
+
+    var df = n - (2 + 2 * K);
+    if (df < 2) { showAlert('Too few degrees of freedom. Reduce interventions or add more data.', 'warning'); return; }
+
+    var pValues = res.tStats.map(function(ts){ return pFromT(ts, df); });
+    var Ycf = T.map(function(t){ return res.beta[0] + res.beta[1] * t; });
+
+    itsResults = Object.assign({}, res, {
+        pValues: pValues, Ycf: Ycf,
+        outcomeName: outLabel, labels: labels,
+        T: T, Y: Y, Darr: Darr, Parr: Parr,
+        n: n, alpha: alpha, df: df, K: K,
+        interventions: interventions, intPoints: intPoints,
+        adminLabel: adminLabel, adminColType: adminColType,
+        adminUnits: adminSelectedUnits.slice(),
+        timeSeries: timeSeries
+    });
+
+    displayResults();
+    showAlert('✓ Analysis complete! Aggregated ' + timeSeries.length + ' month-year periods.', 'success');
+}
+
+// ===== OLS REGRESSION (unchanged) =====
+function matMul(A, B) {
+    var m = A.length, n = B[0].length, p = B.length, C = [];
+    for (var i = 0; i < m; i++) {
+        C[i] = [];
+        for (var j = 0; j < n; j++) {
+            var s = 0;
+            for (var k = 0; k < p; k++) s += A[i][k] * B[k][j];
+            C[i][j] = s;
+        }
+    }
+    return C;
+}
+
+function matTranspose(A) {
+    return A[0].map(function(_, j){ return A.map(function(row){ return row[j]; }); });
+}
+
+function matInverseN(M) {
+    var n = M.length;
+    var A = M.map(function(row){ return row.slice(); });
+    var I = [];
+    for (var i = 0; i < n; i++) {
+        I[i] = [];
+        for (var j = 0; j < n; j++) I[i][j] = (i === j) ? 1 : 0;
+    }
+    for (var col = 0; col < n; col++) {
+        var maxRow = col;
+        for (var row = col + 1; row < n; row++) {
+            if (Math.abs(A[row][col]) > Math.abs(A[maxRow][col])) maxRow = row;
+        }
+        var tmp = A[col]; A[col] = A[maxRow]; A[maxRow] = tmp;
+        tmp = I[col]; I[col] = I[maxRow]; I[maxRow] = tmp;
+        var pivot = A[col][col];
+        if (Math.abs(pivot) < 1e-14) return null;
+        for (var j = 0; j < n; j++) { A[col][j] /= pivot; I[col][j] /= pivot; }
+        for (var r = 0; r < n; r++) {
+            if (r === col) continue;
+            var f = A[r][col];
+            for (var j = 0; j < n; j++) { A[r][j] -= f * A[col][j]; I[r][j] -= f * I[col][j]; }
+        }
+    }
+    return I;
+}
+
+function olsRegress(X, Y) {
+    var Xt = matTranspose(X);
+    var XtX = matMul(Xt, X);
+    var XtXinv = matInverseN(XtX);
+    if (!XtXinv) return null;
+    var XtY = matMul(Xt, Y.map(function(y){ return [y]; }));
+    var beta = matMul(XtXinv, XtY).map(function(r){ return r[0]; });
+    var n = Y.length, k = beta.length;
+    var Yhat = X.map(function(row){ return row.reduce(function(s, x, j){ return s + x * beta[j]; }, 0); });
+    var resid = Y.map(function(y, i){ return y - Yhat[i]; });
+    var SSE = resid.reduce(function(s, e){ return s + e * e; }, 0);
+    var Ymean = Y.reduce(function(s, y){ return s + y; }, 0) / n;
+    var SST = Y.reduce(function(s, y){ return s + (y - Ymean) * (y - Ymean); }, 0);
+    var R2 = SST > 0 ? 1 - SSE / SST : 0;
+    var s2 = n > k ? SSE / (n - k) : 0;
+    var se = XtXinv.map(function(row, i){ return Math.sqrt(Math.max(row[i] * s2, 0)); });
+    var tStats = beta.map(function(b, i){ return se[i] > 0 ? b / se[i] : 0; });
+    var dwNum = 0;
+    for (var i = 1; i < n; i++) dwNum += (resid[i] - resid[i-1]) * (resid[i] - resid[i-1]);
+    var dw = SSE > 0 ? dwNum / SSE : 2;
+    return { beta: beta, se: se, tStats: tStats, Yhat: Yhat, resid: resid, R2: R2, s2: s2, n: n, k: k, dw: dw };
+}
+
+// ===== PRAIS-WINSTEN =====
+function praisWinsten(X, Y, maxIter) {
+    maxIter = maxIter || 20;
+    var n = Y.length, k = X[0].length;
+    var ols = olsRegress(X, Y);
+    if (!ols) return null;
+    var rho = 0, prevRho = 999, iter = 0;
+    var beta = ols.beta, resid = ols.resid;
+    var finalRes = null;
+
+    while (Math.abs(rho - prevRho) > 1e-6 && iter < maxIter) {
+        iter++;
+        prevRho = rho;
+        var num = 0, den = 0;
+        for (var t = 1; t < n; t++) num += resid[t] * resid[t - 1];
+        for (var t = 0; t < n; t++) den += resid[t] * resid[t];
+        rho = den > 0 ? num / den : 0;
+        if (rho > 0.99) rho = 0.99;
+        if (rho < -0.99) rho = -0.99;
+        var Xt = [], Yt = [];
+        var scale = Math.sqrt(1 - rho * rho);
+        Xt.push(X[0].map(function(x) { return x * scale; }));
+        Yt.push(Y[0] * scale);
+        for (var t = 1; t < n; t++) {
+            Xt.push(X[t].map(function(x, j) { return x - rho * X[t - 1][j]; }));
+            Yt.push(Y[t] - rho * Y[t - 1]);
+        }
+        var pwOLS = olsRegress(Xt, Yt);
+        if (!pwOLS) break;
+        beta = pwOLS.beta;
+        resid = Y.map(function(y, i) { return y - X[i].reduce(function(s, x, j) { return s + x * beta[j]; }, 0); });
+        finalRes = pwOLS;
+    }
+
+    if (!finalRes) return null;
+    var Yhat = Y.map(function(y, i) { return X[i].reduce(function(s, x, j) { return s + x * beta[j]; }, 0); });
+    var residOrig = Y.map(function(y, i) { return y - Yhat[i]; });
+    var Ymean = Y.reduce(function(s, y) { return s + y; }, 0) / n;
+    var SST = Y.reduce(function(s, y) { return s + (y - Ymean) * (y - Ymean); }, 0);
+    var SSE = residOrig.reduce(function(s, e) { return s + e * e; }, 0);
+    var R2 = SST > 0 ? 1 - SSE / SST : 0;
+    var dwNum = 0;
+    for (var t = 1; t < n; t++) dwNum += (residOrig[t] - residOrig[t - 1]) * (residOrig[t] - residOrig[t - 1]);
+    var dw = SSE > 0 ? dwNum / SSE : 2;
+
+    return {
+        beta: beta,
+        se: finalRes.se,
+        tStats: finalRes.tStats,
+        Yhat: Yhat,
+        resid: residOrig,
+        R2: R2,
+        dw: dw,
+        rho: rho,
+        iter: iter,
+        method: 'Prais-Winsten GLS',
+        n: n, k: k
+    };
+}
+
+// ===== NEWEY-WEST =====
+function neweyWestSE(X, Y, beta, resid, bandwidth) {
+    var n = Y.length, k = beta.length;
+    var Xt = matTranspose(X);
+    var XtX = matMul(Xt, X);
+    var XtXinv = matInverseN(XtX);
+    if (!XtXinv) return null;
+    var L = bandwidth || Math.max(1, Math.floor(4 * Math.pow(n / 100, 2 / 9)));
+    var S = [];
+    for (var i = 0; i < k; i++) { S[i] = []; for (var j = 0; j < k; j++) S[i][j] = 0; }
+    for (var t = 0; t < n; t++) {
+        for (var i = 0; i < k; i++)
+            for (var j = 0; j < k; j++)
+                S[i][j] += resid[t] * resid[t] * X[t][i] * X[t][j];
+    }
+    for (var lag = 1; lag <= L; lag++) {
+        var w = 1 - lag / (L + 1);
+        for (var t = lag; t < n; t++) {
+            for (var i = 0; i < k; i++)
+                for (var j = 0; j < k; j++) {
+                    var cross = w * resid[t] * resid[t - lag] * (X[t][i] * X[t - lag][j] + X[t - lag][i] * X[t][j]);
+                    S[i][j] += cross;
+                }
+        }
+    }
+    var tmp = matMul(XtXinv, S);
+    var V = matMul(tmp, XtXinv);
+    var se = V.map(function(row, i) { return Math.sqrt(Math.max(row[i], 0)); });
+    return { se: se, L: L, method: 'Newey-West HAC' };
+}
+
+// ===== P-VALUE =====
+function pFromT(t, df) {
+    t = Math.abs(t);
+    if (df <= 0) return 1;
+    var x = df / (df + t * t);
+    return incBeta(df / 2, 0.5, x);
+}
+function incBeta(a, b, x) {
+    if (x <= 0) return 1; if (x >= 1) return 0;
+    var lbeta = lgamma(a) + lgamma(b) - lgamma(a + b);
+    var bt = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lbeta);
+    if (x < (a + 1) / (a + b + 2)) return bt * betaCF(a, b, x) / a;
+    return 1 - bt * betaCF(b, a, 1 - x) / b;
+}
+function betaCF(a, b, x) {
+    var MAXIT = 200, EPS = 3e-7, qab = a+b, qap = a+1, qam = a-1, c=1, d=1-qab*x/qap;
+    if (Math.abs(d)<1e-30) d=1e-30; d=1/d; var h=d;
+    for (var m=1; m<=MAXIT; m++) {
+        var m2=2*m, aa=m*(b-m)*x/((qam+m2)*(a+m2));
+        d=1+aa*d; if(Math.abs(d)<1e-30)d=1e-30;
+        c=1+aa/c; if(Math.abs(c)<1e-30)c=1e-30;
+        d=1/d; h*=d*c;
+        aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+        d=1+aa*d; if(Math.abs(d)<1e-30)d=1e-30;
+        c=1+aa/c; if(Math.abs(c)<1e-30)c=1e-30;
+        d=1/d; var del=d*c; h*=del;
+        if(Math.abs(del-1)<EPS) break;
+    }
+    return h;
+}
+function lgamma(z) {
+    var c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+    var y=z, x=z, tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp); var ser=1.000000000190015;
+    for(var j=0;j<6;j++) ser+=c[j]/++y;
+    return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+function fmtP(p) { return p < 0.001 ? '&lt; .001' : p.toFixed(3); }
+
+// ===== DISPLAY RESULTS =====
+function displayResults() {
+    var r = itsResults;
+    var K = r.K;
+    var dwOK = r.dw >= 1.5 && r.dw <= 2.5;
+    var fitLabel = r.R2 >= 0.7 ? 'Good Fit' : r.R2 >= 0.5 ? 'Moderate' : 'Poor Fit';
+
+    var anySig = false;
+    for (var k = 0; k < K; k++) {
+        var lvlIdx = 2 + k * 2, slpIdx = 3 + k * 2;
+        if (r.pValues[lvlIdx] < r.alpha || r.pValues[slpIdx] < r.alpha) anySig = true;
+    }
+
+    var statsHTML = '<div class="stats-card"><h4>R\u00B2 (Model Fit)</h4><div class="metric-value">' + r.R2.toFixed(3) + '</div><p>' + fitLabel + '</p></div>' +
+        '<div class="stats-card"><h4>Pre-Trend (\u03B2\u2081)</h4><div class="metric-value ' + (Math.abs(r.tStats[1]) > 2 ? 'warning' : '') + '">' + r.beta[1].toFixed(3) + '</div><p>' + (r.pValues[1] < r.alpha ? 'Significant' : 'Not Sig.') + '</p></div>' +
+        '<div class="stats-card"><h4>Durbin-Watson</h4><div class="metric-value ' + (dwOK ? 'success' : 'danger') + '">' + r.dw.toFixed(3) + '</div><p>' + (r.dw < 1.5 ? 'Pos. Autocorr.' : r.dw > 2.5 ? 'Neg. Autocorr.' : 'No Autocorr.') + '</p></div>' +
+        '<div class="stats-card"><h4>Sample Size (N)</h4><div class="metric-value">' + r.n + '</div><p>Degrees of freedom: ' + r.df + '</p></div>' +
+        '<div class="stats-card"><h4>Interventions</h4><div class="metric-value">' + K + '</div><p>' + (anySig ? 'Some significant' : 'None significant') + '</p></div>';
+
+    for (var k = 0; k < K; k++) {
+        var lvlIdx = 2 + k * 2, slpIdx = 3 + k * 2;
+        var ivLabel = r.interventions[k].label;
+        var lvlSig = r.pValues[lvlIdx] < r.alpha;
+        var slpSig = r.pValues[slpIdx] < r.alpha;
+        var dot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + r.interventions[k].color + ';margin-right:4px;"></span>';
+        statsHTML += '<div class="stats-card"><h4>' + dot + ivLabel + '</h4>' +
+            '<div class="metric-value ' + (lvlSig ? 'success' : 'danger') + '" style="font-size:1.1rem;">\u03B2\u2082=' + r.beta[lvlIdx].toFixed(2) + '</div>' +
+            '<p>\u03B2\u2083=' + r.beta[slpIdx].toFixed(4) + ' | ' + ((lvlSig || slpSig) ? 'Significant' : 'Not Sig.') + '</p></div>';
+    }
+    document.getElementById('quickStats').innerHTML = statsHTML;
+
+    var iHTML = '<strong>Model:</strong> R\u00B2 = ' + r.R2.toFixed(3) + ' | Pre-intervention trend: \u03B2\u2081 = ' + r.beta[1].toFixed(4) + ' per month<br><br>';
+    for (var k = 0; k < K; k++) {
+        var lvlIdx = 2 + k * 2, slpIdx = 3 + k * 2;
+        var iv = r.interventions[k];
+        var lvlSig = r.pValues[lvlIdx] < r.alpha;
+        var slpSig = r.pValues[slpIdx] < r.alpha;
+        var dot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + iv.color + ';margin-right:6px;vertical-align:middle;"></span>';
+        iHTML += '<strong>' + dot + iv.label + ' (' + iv.year + '-' + padTwo(iv.month) + '):</strong> ';
+        if (lvlSig && slpSig) {
+            iHTML += '\u2705 Significant level change (\u03B2\u2082 = ' + r.beta[lvlIdx].toFixed(2) + ', p ' + fmtP(r.pValues[lvlIdx]) + ') and slope change (\u03B2\u2083 = ' + r.beta[slpIdx].toFixed(4) + ', p ' + fmtP(r.pValues[slpIdx]) + ').';
+        } else if (lvlSig) {
+            iHTML += '\u2705 Significant level change (\u03B2\u2082 = ' + r.beta[lvlIdx].toFixed(2) + ', p ' + fmtP(r.pValues[lvlIdx]) + '); slope change not significant (p ' + fmtP(r.pValues[slpIdx]) + ').';
+        } else if (slpSig) {
+            iHTML += '\u26A0\uFE0F No significant level change (p ' + fmtP(r.pValues[lvlIdx]) + '); significant slope change (\u03B2\u2083 = ' + r.beta[slpIdx].toFixed(4) + ', p ' + fmtP(r.pValues[slpIdx]) + ').';
+        } else {
+            iHTML += '\u274C Neither level change (p ' + fmtP(r.pValues[lvlIdx]) + ') nor slope change (p ' + fmtP(r.pValues[slpIdx]) + ') significant at \u03B1 = ' + r.alpha + '.';
+        }
+        iHTML += '<br>';
+    }
+    document.getElementById('interpretation').className = anySig ? 'interpretation' : 'interpretation warn';
+    document.getElementById('interpretationText').innerHTML = iHTML;
+
+    if (!dwOK) {
+        document.getElementById('warningBox').classList.remove('hidden');
+        document.getElementById('warningText').textContent = 'DW = ' + r.dw.toFixed(3) + ' — ' + (r.dw < 1.5 ? 'positive' : 'negative') + ' autocorrelation detected. Consider Newey-West or Prais-Winsten corrections.';
+    } else {
+        document.getElementById('warningBox').classList.add('hidden');
+    }
+
+    var ctHtml = '<div class="pub-table-title">Table 1. ITS Segmented Regression Coefficients \u2014 ' + r.outcomeName + '</div>' +
+        '<table class="pub-table"><thead><tr>' +
+        '<th style="text-align:left;">Parameter</th><th style="text-align:left;">Description</th>' +
+        '<th>Estimate</th><th>SE</th><th>t</th><th>p-value</th><th>95% CI</th><th>Sig.</th>' +
+        '</tr></thead><tbody>';
+
+    var baseParams = [
+        ['\u03B2\u2080', 'Baseline intercept'],
+        ['\u03B2\u2081', 'Pre-intervention slope (monthly trend)']
+    ];
+    for (var i = 0; i < 2; i++) {
+        var lo = r.beta[i] - 1.96 * r.se[i], hi = r.beta[i] + 1.96 * r.se[i];
+        var stars = r.pValues[i] < r.alpha ? (r.pValues[i] < 0.001 ? '***' : r.pValues[i] < 0.01 ? '**' : '*') : 'ns';
+        var cls = r.pValues[i] < r.alpha ? ' class="sig-row"' : '';
+        var dir = r.beta[i] > 0.0001 ? 'coef-pos' : r.beta[i] < -0.0001 ? 'coef-neg' : 'coef-neutral';
+        ctHtml += '<tr' + cls + '><td class="row-label"><strong>' + baseParams[i][0] + '</strong></td>' +
+            '<td class="row-label" style="font-size:12px;">' + baseParams[i][1] + '</td>' +
+            '<td><span class="coef-badge ' + dir + '">' + r.beta[i].toFixed(4) + '</span></td>' +
+            '<td>' + r.se[i].toFixed(4) + '</td><td>' + r.tStats[i].toFixed(3) + '</td>' +
+            '<td>' + fmtP(r.pValues[i]) + '</td><td>[' + lo.toFixed(2) + ', ' + hi.toFixed(2) + ']</td>' +
+            '<td><strong>' + stars + '</strong></td></tr>';
+    }
+
+    for (var k = 0; k < K; k++) {
+        var iv = r.interventions[k];
+        var dot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + iv.color + ';margin-right:5px;vertical-align:middle;"></span>';
+        ctHtml += '<tr class="int-section"><td colspan="8" style="text-align:left;font-weight:700;padding-left:12px;">' + dot + iv.label + ' — ' + iv.year + '-' + padTwo(iv.month) + '</td></tr>';
+
+        var lvlIdx = 2 + k * 2, slpIdx = 3 + k * 2;
+        var paramPairs = [
+            [lvlIdx, '\u03B2\u2082\u208B' + (k+1), 'Immediate level change'],
+            [slpIdx, '\u03B2\u2083\u208B' + (k+1), 'Slope change (monthly trend change)']
+        ];
+        paramPairs.forEach(function(pp) {
+            var idx = pp[0], sym = pp[1], desc = pp[2];
+            var lo = r.beta[idx] - 1.96 * r.se[idx], hi = r.beta[idx] + 1.96 * r.se[idx];
+            var stars = r.pValues[idx] < r.alpha ? (r.pValues[idx] < 0.001 ? '***' : r.pValues[idx] < 0.01 ? '**' : '*') : 'ns';
+            var cls = r.pValues[idx] < r.alpha ? ' sig-row' : '';
+            var dir = r.beta[idx] > 0.0001 ? 'coef-pos' : r.beta[idx] < -0.0001 ? 'coef-neg' : 'coef-neutral';
+            ctHtml += '<tr class="' + cls + '"><td class="row-label" style="padding-left:20px;"><strong>' + sym + '</strong></td>' +
+                '<td class="row-label" style="font-size:12px;">' + desc + '</td>' +
+                '<td><span class="coef-badge ' + dir + '">' + r.beta[idx].toFixed(4) + '</span></td>' +
+                '<td>' + r.se[idx].toFixed(4) + '</td><td>' + r.tStats[idx].toFixed(3) + '</td>' +
+                '<td>' + fmtP(r.pValues[idx]) + '</td><td>[' + lo.toFixed(2) + ', ' + hi.toFixed(2) + ']</td>' +
+                '<td><strong>' + stars + '</strong></td></tr>';
+        });
+    }
+    ctHtml += '</tbody></table><div class="pub-table-note"><em>Note.</em> *** p &lt; .001, ** p &lt; .01, * p &lt; \u03B1 (' + r.alpha + '), ns = not significant. 95% CIs = estimate \u00B1 1.96\u00D7SE. R\u00B2 = ' + r.R2.toFixed(3) + ', N = ' + r.n + ', df = ' + r.df + ', DW = ' + r.dw.toFixed(3) + '.</div>';
+    document.getElementById('pubCoefTable').innerHTML = ctHtml;
+
+    var dmCols = ['Period (YYYY-MM)', 'T', 'Y (Observed)', '\u0176 (Fitted)', 'Residual', 'Y Counterfactual'];
+    for (var k = 0; k < K; k++) { dmCols.push('D' + (k+1) + ' (' + r.interventions[k].label + ')'); dmCols.push('P' + (k+1)); }
+    var dmHtml = '<table class="data-table"><thead><tr>' + dmCols.map(function(c){ return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>';
+    for (var i = 0; i < r.n; i++) {
+        var isIntRow = r.intPoints.indexOf(r.T[i]) !== -1;
+        var intLabel = '';
+        r.intPoints.forEach(function(ip, k) { if (r.T[i] === ip) intLabel += ' \u2B05 ' + r.interventions[k].label; });
+        var cls = isIntRow ? ' class="int-row"' : '';
+        var cells = '<td>' + r.labels[i] + intLabel + '</td><td>' + r.T[i] + '</td><td>' + r.Y[i].toFixed(1) + '</td><td>' + r.Yhat[i].toFixed(2) + '</td><td>' + r.resid[i].toFixed(2) + '</td><td>' + r.Ycf[i].toFixed(2) + '</td>';
+        for (var k = 0; k < K; k++) cells += '<td>' + r.Darr[k][i] + '</td><td>' + r.Parr[k][i] + '</td>';
+        dmHtml += '<tr' + cls + '>' + cells + '</tr>';
+    }
+    dmHtml += '</tbody></table>';
+    document.getElementById('designMatrixTable').innerHTML = dmHtml;
+
+    document.getElementById('ctab-main').click();
+    var bannerHTML = '';
+    if (r.adminLabel) {
+        var aicon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+        bannerHTML = '<div class="results-admin-banner">' + aicon + ' Analysing: <strong>' + r.adminLabel + '</strong>' +
+            (r.adminUnits && r.adminUnits.length > 0 && r.adminUnits.length <= 8 ? ' &nbsp;(' + r.adminUnits.map(function(u){ return '<span class="admin-badge">' + u + '</span>'; }).join(' ') + ')' : '') +
+            '</div>';
+    }
+    document.getElementById('adminResultsBanner').innerHTML = bannerHTML;
+    buildCorrectionPanel();
+    buildCoefInterpretation();
+    buildDesignInterpretation();
+    buildChartInterpretation('main');
+    buildFinalVerdict();
+    document.getElementById('resultsSection').classList.remove('hidden');
+    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ===== INTERPRETATION BUILDERS =====
+function plainPanel(color, title, rows) {
+    var html = '<div class="plain-panel ' + color + '"><div class="plain-panel-title">' + title + '</div>';
+    rows.forEach(function(row) {
+        html += '<div class="plain-row"><span class="plain-icon">' + row[0] + '</span><span>' + row[1] + '</span></div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function buildCoefInterpretation() {
+    var r = itsResults;
+    var K = r.K;
+    var rows = [];
+
+    rows.push(['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/></svg>', '<strong>Starting point (β₀ = ' + r.beta[0].toFixed(1) + '):</strong> When the monitoring period began (month 1), the model estimates there were about <strong>' + Math.round(r.beta[0]) + ' ' + r.outcomeName.toLowerCase() + '</strong> as the baseline level.']);
+
+    var b1dir = r.beta[1] > 0 ? 'rising by ' + r.beta[1].toFixed(1) + ' every month' : r.beta[1] < 0 ? 'falling by ' + Math.abs(r.beta[1]).toFixed(1) + ' every month' : 'essentially flat';
+    var b1sig = r.pValues[1] < r.alpha;
+    rows.push(['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polyline points=\"23 6 13.5 15.5 8.5 10.5 1 18\"/><polyline points=\"17 6 23 6 23 12\"/></svg>', '<strong>Pre-intervention trend (β₁ = ' + r.beta[1].toFixed(3) + '):</strong> Before any intervention, ' + r.outcomeName.toLowerCase() + ' were <strong>' + b1dir + '</strong>. ' + (b1sig ? 'This trend is statistically significant.' : 'This trend is not statistically significant.')]);
+
+    for (var k = 0; k < K; k++) {
+        var iv = r.interventions[k];
+        var lvlIdx = 2 + k * 2, slpIdx = 3 + k * 2;
+        var lvlSig = r.pValues[lvlIdx] < r.alpha;
+        var slpSig = r.pValues[slpIdx] < r.alpha;
+        var lvlDir = r.beta[lvlIdx] < 0 ? 'dropped by ' + Math.abs(r.beta[lvlIdx]).toFixed(1) : 'jumped up by ' + r.beta[lvlIdx].toFixed(1);
+        var slpDir = r.beta[slpIdx] < 0 ? 'fell by an extra ' + Math.abs(r.beta[slpIdx]).toFixed(2) + ' each month' : 'rose by an extra ' + r.beta[slpIdx].toFixed(2) + ' each month';
+        var dot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + iv.color + ';margin-right:4px;vertical-align:middle;"></span>';
+        rows.push([dot, '<strong>' + iv.label + ' — Immediate effect (β₂ = ' + r.beta[lvlIdx].toFixed(2) + '):</strong> In the month the ' + iv.label + ' started, ' + r.outcomeName.toLowerCase() + ' <strong>' + lvlDir + '</strong>. ' + (lvlSig ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#28a745\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"/></svg> This is statistically significant.' : '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#856404\" stroke-width=\"2\"><path d=\"M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"/><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"/></svg> This is not statistically significant.')]);
+        rows.push([dot, '<strong>' + iv.label + ' — Ongoing trend (β₃ = ' + r.beta[slpIdx].toFixed(4) + '):</strong> After ' + iv.label + ' started, the monthly direction <strong>' + slpDir + '</strong>. ' + (slpSig ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#28a745\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"/></svg> This is statistically significant.' : '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#856404\" stroke-width=\"2\"><path d=\"M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"/><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"/></svg> This is not statistically significant.')]);
+    }
+
+    var r2msg = r.R2 >= 0.8 ? 'excellent' : r.R2 >= 0.7 ? 'good' : r.R2 >= 0.5 ? 'moderate' : 'poor';
+    rows.push(['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"18\" y1=\"20\" x2=\"18\" y2=\"10\"/><line x1=\"12\" y1=\"20\" x2=\"12\" y2=\"4\"/><line x1=\"6\" y1=\"20\" x2=\"6\" y2=\"14\"/><line x1=\"2\" y1=\"20\" x2=\"22\" y2=\"20\"/></svg>', '<strong>Model quality (R² = ' + r.R2.toFixed(3) + '):</strong> The model fit is <strong>' + r2msg + '</strong>. This means ' + Math.round(r.R2 * 100) + '% of the variation in your data is explained by time and interventions.']);
+
+    var dwOK = r.dw >= 1.5 && r.dw <= 2.5;
+    rows.push([dwOK ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#28a745\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"/></svg>' : '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#856404\" stroke-width=\"2\"><path d=\"M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"/><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"/></svg>', '<strong>Result reliability (Durbin-Watson = ' + r.dw.toFixed(2) + '):</strong> ' + (dwOK ? 'No autocorrelation detected — your p-values are <strong>reliable</strong>.' : 'Autocorrelation detected — p-values may be <strong>too optimistic</strong>. Consider corrections.')]);
+
+    document.getElementById('coefInterpretation').innerHTML = plainPanel('blue', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> What This Table Is Telling You — In Plain Words', rows);
+}
+
+function buildDesignInterpretation() {
+    var r = itsResults;
+    var rows = [
+        ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><polyline points=\"12 6 12 12 16 14\"/></svg>', '<strong>Period column:</strong> Each row is one month of aggregated data in YYYY-MM format.'],
+        ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M3 9h18M3 15h18M9 3v18\"/></svg>', '<strong>T column (time counter):</strong> Numbers 1, 2, 3, 4… counting up from your first month. This is what the regression uses for time.'],
+        ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/></svg>', '<strong>Y (Observed):</strong> The actual aggregated values from your data — the sum of all districts/facilities for that month.'],
+        ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M2 12s2-4 5-4 5 8 10 8 5-4 5-4\"/></svg>', '<strong>Ŷ (Fitted):</strong> The model\'s prediction for each month. The gap between Y and Ŷ is the residual.'],
+        ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polyline points=\"17 1 21 5 17 9\"/><path d=\"M3 11V9a4 4 0 0 1 4-4h14\"/><polyline points=\"7 23 3 19 7 15\"/><path d=\"M21 13v2a4 4 0 0 1-4 4H3\"/></svg>', '<strong>Residual (Y − Ŷ):</strong> The difference between actual and predicted. Large residuals = something unexpected happened that month.'],
+        ['- -', '<strong>Y Counterfactual:</strong> What cases would have been if intervention never happened. The gap between Y and counterfactual is your programme\'s impact.'],
+        ['0/1', '<strong>D columns:</strong> Binary switches: 0 before intervention, 1 at and after. Used to estimate level change (β₂).'],
+        ['1,2,3', '<strong>P columns:</strong> Count months since each intervention. Used to estimate slope change (β₃).']
+    ];
+    document.getElementById('designInterpretation').innerHTML = plainPanel('blue', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> How to Read This Table — Column by Column', rows);
+}
+
+function buildChartInterpretation(chartType) {
+    var r = itsResults;
+    var rows = [];
+    var color = 'blue';
+
+    if (chartType === 'main') {
+        rows = [
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7\" fill=\"#004080\"/></svg>', '<strong>Black dots (Observed):</strong> Your actual aggregated monthly data.'],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\"><line x1=\"2\" y1=\"12\" x2=\"22\" y2=\"12\" stroke=\"#004080\" stroke-width=\"3\"/></svg>', '<strong>Coloured solid lines (Fitted trend):</strong> The model\'s best-fit line through the data. Each colour represents a different intervention period.'],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\"><path d=\"M2 12h4M10 12h4M18 12h4\" stroke=\"#999\" stroke-width=\"2.5\" stroke-linecap=\"round\"/></svg>', '<strong>Grey dotted line (Counterfactual):</strong> What would have happened with no intervention. The gap is your programme\'s impact.'],
+        ];
+        r.interventions.forEach(function(iv) {
+            rows.push(['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\"><line x1=\"12\" y1=\"2\" x2=\"12\" y2=\"22\" stroke=\"#e63946\" stroke-width=\"2.5\" stroke-dasharray=\"4 2\"/></svg>', '<strong>Coloured dashed line — ' + iv.label + ':</strong> Marks the exact month the programme started.']);
+        });
+        rows.push(['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M9 21h6M10 17h4\"/></svg>', '<strong>Overall pattern:</strong> A successful intervention shows dots staying below the grey counterfactual line, with the coloured fitted line bending away from grey.']);
+
+    } else if (chartType === 'residuals') {
+        var dwOK = r.dw >= 1.5 && r.dw <= 2.5;
+        color = dwOK ? 'green' : 'amber';
+        rows = [
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/></svg>', '<strong>What this shows:</strong> The gaps between what happened and what the model predicted each month.'],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7\" fill=\"#004080\"/></svg>', '<strong>Blue dots (above zero):</strong> More cases than predicted.'],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7\" fill=\"#dc3545\"/></svg>', '<strong>Red dots (below zero):</strong> Fewer cases than predicted.'],
+            [dwOK ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#28a745\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"/></svg>' : '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#856404\" stroke-width=\"2\"><path d=\"M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"/><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"/></svg>', '<strong>Pattern check (DW = ' + r.dw.toFixed(2) + '):</strong> ' + (dwOK ? 'Dots scatter randomly — your results are reliable.' : 'Dots cluster (several blue in a row, then red) — months are correlated.')],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M2 8h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8z\"/><line x1=\"6\" y1=\"8\" x2=\"6\" y2=\"12\"/><line x1=\"10\" y1=\"8\" x2=\"10\" y2=\"11\"/><line x1=\"14\" y1=\"8\" x2=\"14\" y2=\"12\"/><line x1=\"18\" y1=\"8\" x2=\"18\" y2=\"11\"/></svg>', '<strong>Size of residuals:</strong> Larger gaps suggest something unexpected happened that month.']
+        ];
+
+    } else { // gap
+        var gap = r.Y.map(function(y, i){ return y - r.Ycf[i]; });
+        var postStart = r.intPoints[0] - 1;
+        var postGap = gap.slice(postStart);
+        var totalAvert = -postGap.reduce(function(s, g){ return s + g; }, 0);
+        color = totalAvert > 0 ? 'green' : 'amber';
+        rows = [
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"18\" y1=\"20\" x2=\"18\" y2=\"10\"/><line x1=\"12\" y1=\"20\" x2=\"12\" y2=\"4\"/><line x1=\"6\" y1=\"20\" x2=\"6\" y2=\"14\"/><line x1=\"2\" y1=\"20\" x2=\"22\" y2=\"20\"/></svg>', '<strong>What each bar shows:</strong> How many cases were averted (green, pointing down) or exceeded (red, pointing up) compared to the counterfactual.'],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7\" fill=\"#28a745\"/></svg>', '<strong>Green bars:</strong> Cases lower than counterfactual — your programme is protecting people.'],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"7\" fill=\"#dc3545\"/></svg>', '<strong>Red bars:</strong> Cases higher than counterfactual — worse than predicted.'],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"16\"/><line x1=\"8\" y1=\"12\" x2=\"16\" y2=\"12\"/></svg>', '<strong>Total protection:</strong> Approximately <strong>' + Math.round(totalAvert) + ' ' + r.outcomeName.toLowerCase() + ' averted</strong> across all post-intervention months.'],
+            ['<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polyline points=\"23 6 13.5 15.5 8.5 10.5 1 18\"/><polyline points=\"17 6 23 6 23 12\"/></svg>', '<strong>Trend in bars:</strong> Growing green bars = effect getting stronger. Shrinking = effect fading.']
+        ];
+    }
+
+    document.getElementById('chartInterpretation').innerHTML = plainPanel(color, '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Reading This Chart — What the Lines and Bars Mean', rows);
+}
+
+function buildFinalVerdict() {
+    var r = itsResults;
+    var K = r.K;
+
+    var sigCount = 0, totalSig = 0;
+    for (var k = 0; k < K; k++) {
+        var lvlIdx = 2 + k * 2, slpIdx = 3 + k * 2;
+        if (r.pValues[lvlIdx] < r.alpha) sigCount++;
+        if (r.pValues[slpIdx] < r.alpha) sigCount++;
+        totalSig += 2;
+    }
+    var sigRatio = sigCount / totalSig;
+    var effectivenessLabel = sigRatio >= 0.75 ? 'HIGHLY EFFECTIVE' : sigRatio >= 0.5 ? 'PARTIALLY EFFECTIVE' : sigRatio > 0 ? 'WEAKLY EFFECTIVE' : 'NO DETECTABLE EFFECT';
+    var badgeClass = sigRatio >= 0.5 ? 'effective' : sigRatio > 0 ? 'partial' : 'ineffective';
+    var verdictEmoji = sigRatio >= 0.75 ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#28a745\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"/></svg>' : sigRatio >= 0.5 ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#856404\" stroke-width=\"2\"><path d=\"M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"/><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"/></svg>' : sigRatio > 0 ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#856404\" stroke-width=\"2\"><path d=\"M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"/><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"/></svg>' : '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#dc3545\" stroke-width=\"2.5\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"/><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"/></svg>';
+
+    var gap = r.Y.map(function(y, i){ return y - r.Ycf[i]; });
+    var postStart = r.intPoints[0] - 1;
+    var totalAverted = -gap.slice(postStart).reduce(function(s, g){ return s + g; }, 0);
+    var postMonths = r.n - postStart;
+
+    var postGap = gap.slice(postStart);
+    var firstHalf = postGap.slice(0, Math.floor(postGap.length / 2));
+    var secondHalf = postGap.slice(Math.floor(postGap.length / 2));
+    var firstAvg = firstHalf.reduce(function(s, g){ return s + g; }, 0) / (firstHalf.length || 1);
+    var secondAvg = secondHalf.reduce(function(s, g){ return s + g; }, 0) / (secondHalf.length || 1);
+    var postSlope = r.beta[1] + r.beta[3 + (K - 1) * 2];
+
+    var durationMsg, durationBar, durationPct;
+    if (postSlope < -0.5) {
+        durationMsg = 'The downward trend is accelerating — intervention still gaining strength.';
+        durationPct = 90; durationBar = '#28a745';
+    } else if (postSlope < 0) {
+        durationMsg = 'Intervention still reducing cases month by month but pace is slowing. Effect likely to continue 6–12 more months.';
+        durationPct = 70; durationBar = '#2a9d8f';
+    } else if (postSlope < 1) {
+        durationMsg = 'Post-intervention trend nearly flat. Effect has stabilised at new lower level.';
+        durationPct = 50; durationBar = '#ffc107';
+    } else {
+        durationMsg = 'Cases drifting upward after intervention. Protection may be waning.';
+        durationPct = 20; durationBar = '#dc3545';
+    }
+
+    var intCards = '';
+    for (var k = 0; k < K; k++) {
+        var iv = r.interventions[k];
+        var lvlIdx = 2 + k * 2, slpIdx = 3 + k * 2;
+        var lvlSig = r.pValues[lvlIdx] < r.alpha;
+        var slpSig = r.pValues[slpIdx] < r.alpha;
+        var lvlTxt = lvlSig ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#28a745\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"/></svg> Immediate drop of ' + Math.abs(r.beta[lvlIdx]).toFixed(1) + ' (significant)' : '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#dc3545\" stroke-width=\"2.5\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"/><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"/></svg> No significant immediate change';
+        var slpTxt = slpSig ? '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#28a745\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"/></svg> Ongoing improvement of ' + Math.abs(r.beta[slpIdx]).toFixed(2) + '/month (significant)' : '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#dc3545\" stroke-width=\"2.5\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"/><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"/></svg> No significant trend change';
+        intCards += '<div class="verdict-card"><div class="verdict-card-title"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + iv.color + ';margin-right:5px;vertical-align:middle;"></span>' + iv.label + '</div>' +
+            '<div style="font-size:12px;line-height:1.9;">' + lvlTxt + '<br>' + slpTxt + '</div></div>';
+    }
+
+    var conclusionParts = [];
+    if (sigRatio >= 0.75) {
+        conclusionParts.push('The ITS analysis provides <strong>strong statistical evidence</strong> that the programme(s) had a real, measurable impact on ' + r.outcomeName.toLowerCase() + '.');
+    } else if (sigRatio >= 0.5) {
+        conclusionParts.push('The ITS analysis provides <strong>moderate evidence</strong> of programme impact — some effects are clear, others less certain.');
+    } else if (sigRatio > 0) {
+        conclusionParts.push('The ITS analysis finds <strong>limited evidence</strong> of programme impact. Hints of change but not statistically significant.');
+    } else {
+        conclusionParts.push('The ITS analysis finds <strong>no statistically significant evidence</strong> of programme impact at α = ' + r.alpha + '.');
+    }
+    if (totalAverted > 0) {
+        conclusionParts.push('Across the ' + postMonths + ' post-intervention months, an estimated <strong>' + Math.round(totalAverted) + ' cases were averted</strong> compared to the counterfactual.');
+    }
+    conclusionParts.push(durationMsg);
+
+    var html = '<div class="verdict-section"><div class="verdict-header"><span style="font-size:24px;">' + verdictEmoji + '</span>FINAL VERDICT — EFFECTIVENESS</div>' +
+        '<div class="verdict-body">' +
+        '<div class="verdict-badge ' + badgeClass + '">' + verdictEmoji + ' Overall Assessment: ' + effectivenessLabel + '</div>' +
+        '<div class="verdict-grid">' +
+        '<div class="verdict-card"><div class="verdict-card-title">Model Quality</div><div class="verdict-card-value">' + Math.round(r.R2 * 100) + '%</div><div class="verdict-card-desc">R² — proportion of variation explained.</div></div>' +
+        '<div class="verdict-card"><div class="verdict-card-title">Cases Averted</div><div class="verdict-card-value">' + (totalAverted > 0 ? '~' + Math.round(totalAverted) : 'None') + '</div><div class="verdict-card-desc">Total across ' + postMonths + ' post-intervention months.</div></div>' +
+        '<div class="verdict-card"><div class="verdict-card-title">Post-Slope</div><div class="verdict-card-value">' + postSlope.toFixed(2) + '/month</div><div class="verdict-card-desc">' + (postSlope < 0 ? 'Falling — ongoing protection.' : 'Rising — protection waning.') + '</div></div>' +
+        intCards +
+        '</div>' +
+        '<div class="duration-bar-wrap"><div class="duration-bar-label">Effectiveness trajectory</div>' +
+        '<div class="duration-bar-track"><div class="duration-bar-fill" style="width:' + durationPct + '%;background:' + durationBar + ';">' + durationPct + '%</div></div></div>' +
+        '<div class="verdict-conclusion">' + conclusionParts.map(function(p){ return '<p style="margin-bottom:10px;">' + p + '</p>'; }).join('') + '</div>' +
+        '</div></div>';
+
+    document.getElementById('finalVerdictSection').innerHTML = html;
+}
+
+// ===== CHART TABS & RENDERING =====
+function switchChartTab(name, el) {
+    document.querySelectorAll('.chart-tab').forEach(function(t){ t.classList.remove('active'); });
+    el.classList.add('active');
+    if (name === 'main') { renderMainChart(); buildChartInterpretation('main'); }
+    else if (name === 'residuals') { renderResidualsChart(); buildChartInterpretation('residuals'); }
+    else { renderGapChart(); buildChartInterpretation('gap'); }
+}
+
+function buildSegments() {
+    var r = itsResults;
+    var K = r.K;
+    var breakpoints = [0].concat(r.intPoints.map(function(ip){ return ip - 1; })).concat([r.n]);
+    var segments = [];
+    for (var s = 0; s < breakpoints.length - 1; s++) {
+        var start = breakpoints[s], end = breakpoints[s+1];
+        var xSeg = r.labels.slice(start, end);
+        var ySeg = r.Yhat.slice(start, end);
+        if (s > 0 && xSeg.length > 0) {
+            xSeg = [r.labels[start-1]].concat(xSeg);
+            ySeg = [r.Yhat[start-1]].concat(ySeg);
+        }
+        segments.push({ x: xSeg, y: ySeg });
+    }
+    return segments;
+}
+
+function renderMainChart() {
+    var r = itsResults;
+    var segs = buildSegments();
+    var segColors = ['#004080', '#1a7abf', '#2196f3'];
+    var traces = [
+        { x: r.labels, y: r.Y, mode: 'markers', name: 'Observed', marker: { color: '#222', size: 7, symbol: 'circle' }, type: 'scatter', hovertemplate: '%{x}: %{y:.1f}<extra>Observed</extra>' },
+        { x: r.labels, y: r.Ycf, mode: 'lines', name: 'Counterfactual (no interventions)', line: { color: '#999', width: 2, dash: 'dot' }, type: 'scatter' }
+    ];
+    segs.forEach(function(seg, idx) {
+        traces.push({ x: seg.x, y: seg.y, mode: 'lines', name: idx === 0 ? 'Fitted (pre)' : 'Fitted (post-int ' + idx + ')', line: { color: idx === 0 ? '#004080' : r.interventions[idx-1].color, width: 3 }, type: 'scatter', showlegend: true });
+    });
+
+    var shapes = [], annotations = [];
+    r.interventions.forEach(function(iv, k) {
+        var xVal = r.labels[r.intPoints[k] - 1];
+        shapes.push({ type:'line', x0:xVal, x1:xVal, y0:0, y1:1, yref:'paper', line:{ color:iv.color, width:2.5, dash:'dash' } });
+        annotations.push({ x:xVal, y:1.0 - k*0.1, yref:'paper', text:'<b>' + iv.label + '</b>', showarrow:true, arrowhead:2, arrowcolor:iv.color, font:{ color:iv.color, size:11, family:'Oswald' }, bgcolor:'#fff', bordercolor:iv.color, borderwidth:1.5, borderpad:4, ax:30, ay:-30 });
+    });
+
+    var layout = {
+        title: { text: '<b>ITS Analysis \u2014 ' + r.outcomeName + '</b>', font: { family:'Oswald', size:17, color:'#004080' } },
+        font: { family:'Oswald' },
+        xaxis: { title:'Period (YYYY-MM)', tickfont:{ size:10 }, tickangle:-45 },
+        yaxis: { title:r.outcomeName },
+        legend: { orientation:'h', y:-0.3, font:{ size:11 } },
+        margin: { t:70, b:140, l:70, r:30 },
+        shapes: shapes, annotations: annotations,
+        plot_bgcolor:'#fff', paper_bgcolor:'#fff'
+    };
+    Plotly.newPlot('mainChart', traces, layout, { responsive:true });
+}
+
+function renderResidualsChart() {
+    var r = itsResults;
+    var cols = r.resid.map(function(e){ return e >= 0 ? '#004080' : '#dc3545'; });
+    var shapes = [];
+    r.interventions.forEach(function(iv, k) {
+        var xVal = r.labels[r.intPoints[k] - 1];
+        shapes.push({ type:'line', x0:xVal, x1:xVal, y0:0, y1:1, yref:'paper', line:{ color:iv.color, width:2, dash:'dash' } });
+    });
+    var traces = [
+        { x:r.labels, y:r.resid, mode:'markers+lines', marker:{ color:cols, size:6 }, line:{ color:'#ccc', width:1 }, name:'Residuals', type:'scatter' },
+        { x:r.labels, y:new Array(r.n).fill(0), mode:'lines', line:{ color:'#000', width:1, dash:'dash' }, showlegend:false }
+    ];
+    var layout = { title:{ text:'<b>Residuals Over Time</b>', font:{ family:'Oswald', size:17, color:'#004080' } }, font:{ family:'Oswald' }, xaxis:{ title:'Period (YYYY-MM)', tickangle:-45, tickfont:{ size:10 } }, yaxis:{ title:'Residual' }, margin:{ t:70, b:140, l:70, r:30 }, shapes:shapes, plot_bgcolor:'#fff', paper_bgcolor:'#fff' };
+    Plotly.newPlot('mainChart', traces, layout, { responsive:true });
+}
+
+function renderGapChart() {
+    var r = itsResults;
+    var gap = r.Y.map(function(y, i){ return y - r.Ycf[i]; });
+    var totalGap = gap.reduce(function(s, g){ return s + g; }, 0);
+    var cols = gap.map(function(g){ return g < 0 ? '#28a745' : '#dc3545'; });
+    var shapes = [];
+    r.interventions.forEach(function(iv, k) {
+        var xVal = r.labels[r.intPoints[k] - 1];
+        shapes.push({ type:'line', x0:xVal, x1:xVal, y0:0, y1:1, yref:'paper', line:{ color:iv.color, width:2, dash:'dash' } });
+    });
+    var traces = [{ x:r.labels, y:gap, type:'bar', marker:{ color:cols }, name:'Observed \u2212 Counterfactual' }];
+    var layout = { title:{ text:'<b>Counterfactual Gap \u2014 All Periods</b><br><sub>Cumulative gap: ' + totalGap.toFixed(1) + '</sub>', font:{ family:'Oswald', size:16, color:'#004080' } }, font:{ family:'Oswald' }, xaxis:{ title:'Period (YYYY-MM)', tickangle:-45, tickfont:{ size:10 } }, yaxis:{ title:'Observed \u2212 Counterfactual' }, margin:{ t:80, b:140, l:70, r:30 }, shapes:shapes, plot_bgcolor:'#fff', paper_bgcolor:'#fff' };
+    Plotly.newPlot('mainChart', traces, layout, { responsive:true });
+}
+
+function exportChart(fmt) {
+    Plotly.downloadImage('mainChart', { format:fmt, width:1100, height:580, filename:'ITS_chart' });
+}
+
+// ===== CORRECTION PANEL =====
+var _corrActiveMethod = 'pw';
+var _corrResults = {};
+
+function buildCorrectionPanel() {
+    var r = itsResults;
+    var dwOK = r.dw >= 1.5 && r.dw <= 2.5;
+    if (dwOK) { document.getElementById('correctionPanel').innerHTML = ''; return; }
+
+    var df = r.df;
+    var X = r.T.map(function(t, i) {
+        var row = [1, t];
+        for (var k = 0; k < r.K; k++) { row.push(r.Darr[k][i]); row.push(r.Parr[k][i]); }
+        return row;
+    });
+
+    var pw = praisWinsten(X, r.Y, 20);
+    var nw = null;
+    if (pw) {
+        nw = neweyWestSE(X, r.Y, r.beta, r.resid, null);
+    }
+    _corrResults = { pw: pw, nw: nw };
+
+    renderCorrectionPanel(_corrActiveMethod);
+}
+
+function renderCorrectionPanel(method) {
+    var r = itsResults;
+    _corrActiveMethod = method;
+    var pw = _corrResults.pw, nw = _corrResults.nw;
+    var df = r.df;
+
+    var paramNames = ['\u03B2\u2080 (Intercept)', '\u03B2\u2081 (Pre-slope)'];
+    for (var k = 0; k < r.K; k++) {
+        paramNames.push('\u03B2\u2082-' + (k+1) + ' (' + r.interventions[k].label + ' level)');
+        paramNames.push('\u03B2\u2083-' + (k+1) + ' (' + r.interventions[k].label + ' slope)');
+    }
+
+    var corrRes = method === 'pw' ? pw : { beta: r.beta, se: nw ? nw.se : r.se, tStats: null, dw: r.dw, R2: r.R2, rho: null };
+    if (!corrRes) { document.getElementById('correctionPanel').innerHTML = '<div class="warning-box">Correction failed.</div>'; return; }
+
+    var corrBeta = corrRes.beta;
+    var corrSE = corrRes.se;
+    var corrT = corrBeta.map(function(b, i) { return corrSE[i] > 0 ? b / corrSE[i] : 0; });
+    var corrP = corrT.map(function(t) { return pFromT(t, df); });
+
+    var methodExplain = '';
+    var methodLabel = '';
+    var rhoLine = '';
+    if (method === 'pw') {
+        methodLabel = 'Prais-Winsten GLS';
+        rhoLine = pw ? '<br>Estimated autocorrelation: <span class="rho-display">\u03C1 = ' + pw.rho.toFixed(4) + '</span>' : '';
+        methodExplain = '<strong>Prais-Winsten:</strong> Removes month-to-month dependency (rho) before regression. Beta values may change slightly. Recommended when DW shows autocorrelation.' + rhoLine;
+    } else {
+        methodLabel = 'Newey-West HAC';
+        methodExplain = '<strong>Newey-West:</strong> Keeps beta values unchanged. Recalculates standard errors to be more honest about p-values when autocorrelation is present.';
+    }
+
+    var tableRows = '';
+    for (var i = 0; i < paramNames.length; i++) {
+        var origP = r.pValues[i];
+        var newP = corrP[i];
+        var origSig = origP < r.alpha;
+        var newSig = newP < r.alpha;
+        var changed = origSig !== newSig;
+        var rowClass = changed ? (newSig ? ' class="sig-now"' : ' class="nosig-now"') : (changed ? ' class="changed"' : '');
+        var changeNote = changed ? (newSig ? ' <span style="color:#28a745;font-weight:700;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> NOW SIG</span>' : ' <span style="color:#dc3545;font-weight:700;">← LOST SIG</span>') : '';
+        tableRows += '<tr' + rowClass + '>' +
+            '<td class="param-col">' + paramNames[i] + '</td>' +
+            '<td>' + r.beta[i].toFixed(4) + '</td>' +
+            '<td>' + (method === 'pw' ? corrBeta[i].toFixed(4) : r.beta[i].toFixed(4)) + '</td>' +
+            '<td>' + r.se[i].toFixed(4) + '</td>' +
+            '<td>' + corrSE[i].toFixed(4) + '</td>' +
+            '<td>' + fmtP(origP) + ' (' + (origSig ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>') + ')</td>' +
+            '<td>' + fmtP(newP) + ' (' + (newSig ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>') + ')' + changeNote + '</td>' +
+            '</tr>';
+    }
+    var pwDW = pw ? pw.dw.toFixed(3) : '—';
+    var pwR2 = pw ? pw.R2.toFixed(3) : '—';
+
+    var html = '<div class="corr-panel">' +
+        '<div class="corr-header"><span style="display:inline-flex;align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span> AUTOCORRELATION CORRECTION (DW = ' + r.dw.toFixed(3) + ')</div>' +
+        '<div class="corr-body">' +
+        '<p style="font-size:13px;margin-bottom:14px;color:#333;">Your Durbin-Watson of ' + r.dw.toFixed(3) + ' indicates ' + (r.dw < 1.5 ? 'positive' : 'negative') + ' autocorrelation. Consecutive months are not independent. The corrections below address this.</p>' +
+        '<div class="corr-method-tabs">' +
+        '<div class="corr-tab ' + (method === 'pw' ? 'active' : '') + '" onclick="renderCorrectionPanel(\'pw\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Prais-Winsten GLS</div>' +
+        '<div class="corr-tab ' + (method === 'nw' ? 'active' : '') + '" onclick="renderCorrectionPanel(\'nw\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 8h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8z"/><line x1="6" y1="8" x2="6" y2="12"/><line x1="10" y1="8" x2="10" y2="11"/><line x1="14" y1="8" x2="14" y2="12"/><line x1="18" y1="8" x2="18" y2="11"/></svg> Newey-West HAC</div>' +
+        '</div>' +
+        '<div class="corr-explain">' + methodExplain + '</div>' +
+        '<div class="corr-compare"><table class="corr-table"><thead><tr>' +
+        '<th style="text-align:left;">Parameter</th>' +
+        '<th>β (OLS)</th><th>β (' + methodLabel + ')</th>' +
+        '<th>SE (OLS)</th><th>SE (' + methodLabel + ')</th>' +
+        '<th>p (OLS)</th><th>p (' + methodLabel + ')</th>' +
+        '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
+        (method === 'pw' ? '<div style="margin-top:10px;font-size:12px;color:#555;">After correction — R² = ' + pwR2 + ' &nbsp;|&nbsp; DW = ' + pwDW + (pw && (pw.dw >= 1.5 && pw.dw <= 2.5) ? ' <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#28a745" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> (resolved)' : '') + '</div>' : '') +
+        '<div class="corr-note"><strong>Interpretation:</strong> Results that remain significant after correction are more trustworthy. Results that lose significance were likely false positives from autocorrelation.</div>' +
+        '</div></div>';
+
+    document.getElementById('correctionPanel').innerHTML = html;
+}
+
+// ===== COPY & EXPORT =====
+function copyTableById(id) {
+    var el = document.getElementById(id);
+    var range = document.createRange(); range.selectNode(el);
+    window.getSelection().removeAllRanges(); window.getSelection().addRange(range);
+    document.execCommand('copy'); window.getSelection().removeAllRanges();
+    showAlert('Table copied!', 'success');
+}
+
+function exportHTML() {
+    var r = itsResults; if (!r) return;
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ITS Results</title>' +
+        '<style>body{font-family:"Times New Roman",serif;max-width:900px;margin:40px auto;font-size:12pt;}' +
+        'table{width:100%;border-collapse:collapse;margin:20px 0;}th,td{padding:9px 13px;text-align:center;}' +
+        'thead{border-top:2px solid #000;border-bottom:1px solid #000;}tbody{border-bottom:2px solid #000;}' +
+        '.row-label{text-align:left;}h1{text-align:center;font-size:16pt;}p.sub{text-align:center;font-style:italic;}</style></head><body>' +
+        '<h1>Interrupted Time Series Analysis</h1>' +
+        '<p class="sub">Outcome: ' + r.outcomeName + ' | N = ' + r.n + ' | Interventions: ' + r.interventions.map(function(iv){ return iv.label + ' (' + iv.year + '-' + padTwo(iv.month) + ')'; }).join(', ') + '</p>' +
+        document.getElementById('pubCoefTable').innerHTML + '</body></html>';
+    var blob = new Blob([html], { type:'text/html' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'ITS_results.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    showAlert('HTML exported!', 'success');
+}
+</script>
+</body>
+</html>
